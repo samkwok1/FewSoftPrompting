@@ -183,7 +183,7 @@ def dataset_creator(task, save, num_shots):
     valid_dataset = Dataset.from_list(validation_examples)
     test_dataset = Dataset.from_list(test_examples)
     dsd = DatasetDict({"train": train_dataset, "valid": valid_dataset, "test": test_dataset})
-
+    print(dsd)
     if save:
         dsd.save_to_disk("../data/processed/hf-{}".format(task))
 
@@ -191,7 +191,7 @@ def dataset_creator(task, save, num_shots):
 def main():
     # arg handling
     args = sys.argv[1:]
-    assert len(args) == 3, "Ensure args are of the form: python data_scripts.py {sst, quora, sts} num_shots save. This script takes in three args."
+    assert len(args) == 3, "Ensure args are of the form: python data_scripts.py {sst, quora, sts} save num_shots. This script takes in three args."
     task = args[0]
     save = args[1]
     save = save.lower()
