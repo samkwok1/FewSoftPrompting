@@ -56,6 +56,7 @@ def zero_shot(hf_dataset, columns, prompt):
         hf_examples.append({'text': example, 'label': hf_dataset[i]['label']})
     # print(len(hf_examples) == len(hf_dataset['label']))
     # print(hf_examples)
+    return hf_examples
 
 
 def few_shot(hf_dataset, columns, prompt, num_shots):
@@ -69,7 +70,34 @@ def few_shot(hf_dataset, columns, prompt, num_shots):
     associated value being the true label for the incomplete part of the example. We return this built
     list of dictionaries
     '''
-    pass
+    # initialize list of dictionaries as empty
+    hf_examples = []
+
+    # for every training example construct an n shot example
+    for i in range(len(hf_dataset)):
+        # init current example with prompt
+        example = "{}\n\n".format(prompt)
+        
+        # for current example we will generate num_shots complete examples
+        for _ in range(num_shots):
+            random_index = random.randint(0, len(hf_dataset) - 1)
+            # generate single example using random int and the column names and values at this random int row
+            for column in columns[:-1]:
+                example += "    {}: {}\n".format(column, hf_dataset[random_index][column])
+            example += "    {}: {}\n\n".format('label', hf_dataset[random_index]['label'])
+        
+        # after generating num_shot complete examples we will add our incomplete example
+        for column in columns[:-1]:
+            example += "    {}: {}\n".format(column, hf_dataset[i][column])
+        
+        # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
+        example += "    {}: \n\n".format('label')
+
+        # now turn this into a dictionary and add to list
+        hf_examples.append({'text': example, 'label': hf_dataset[i]['label']})
+        # print(example)
+    return hf_examples
+
 
 
 def make_dataset(task, save, num_shots):
@@ -96,10 +124,12 @@ def make_dataset(task, save, num_shots):
 
     # load dataset from name and make the train, validation, and test datasets
     task_dataset = load_dataset(dataset_name)
-    train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], task_dataset['test']
+    train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], None
+    if task != 'siqa':
+        test_dataset = task_dataset['test']
 
     # make train list, validation list which are always used
-    train_examples = few_shot(train_dataset, columns, prompt, num_shots)  # need to actually implement this!!!
+    train_examples = few_shot(train_dataset, columns, prompt, num_shots)  # need to check implementation of this!!!
     validation_examples = zero_shot(validation_dataset, columns, prompt)
 
 
