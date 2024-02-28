@@ -100,15 +100,11 @@ class FewSoftModel():
         self.num_shots = num_shots
         self.tokenizer_path = tokenizer_path
         self.model_path = model_path
-        self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[task]])
-        self.dataset = self.csv_to_hf()
-        self.tokenized_dataset = self.dataset.map(self.preprocess_function,
-                                                  batched=True,
-                                                  num_proc=1,
-                                                  remove_columns=self.dataset["train"].column_names,
-                                                  load_from_cache_file=False,
-                                                  desc="Running Tokenizer on Dataset")
 
+
+        self.target_max_length = None
+        self.dataset = None
+        self.tokenized_dataset = None
         self.tokenizer = None
         self.pad_token = None
         self.LLM_model = None
@@ -118,14 +114,22 @@ class FewSoftModel():
         self.lr_scheduler = None
         self.optimizer = None
         self.num_epochs = None
-
+    
+    def init_dataset(self):
+        self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[task]])
+        self.dataset = self.csv_to_hf()
+        self.tokenized_dataset = self.dataset.map(self.preprocess_function,
+                                                  batched=True,
+                                                  num_proc=1,
+                                                  remove_columns=self.dataset["train"].column_names,
+                                                  load_from_cache_file=False,
+                                                  desc="Running Tokenizer on Dataset")
     def init_LLM_n_tokenizer(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, use_auth_token="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")
         self.pad_token = self.tokenizer.eos_token_id if self.tokenizer.pad_token_id is None else self.tokenizer.pad_token_id
         self.LLM_model = LLM(
             model=self.model_path,
-            device_map="auto",
-            token="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"
+            download_dir = ""
         )
 
     def init_PEFT(self): 
