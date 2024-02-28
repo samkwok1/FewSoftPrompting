@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup
+from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
 from datasets import DatasetDict, load_dataset, Dataset
@@ -14,6 +14,10 @@ LABELS_DICT = {
     "siqa": ['1', '2', '3'],
     "piqa": ['0', '1'],
     "swag": ['0', '1', '2', '3']
+}
+
+LABELS_MAP = {
+    "piqa": {'A)': 0, 'B)': 1}
 }
 
 INNIT_DICT = {
@@ -102,13 +106,9 @@ class FewSoftModel():
         self.tokenizer_path = tokenizer_path
         self.model_path = model_path
 
-
-        self.target_max_length = None
-        self.dataset = None
         self.tokenized_dataset = None
         self.tokenizer = None
         self.num_virtual_tokens = None
-        self.pad_token = None
         self.LLM_model = None
         self.PEFT_model = None
         self.train_dataloader = None
@@ -117,17 +117,9 @@ class FewSoftModel():
         self.optimizer = None
         self.num_epochs = None
     
-    def init_dataset(self):
-        self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[self.task]])
-        self.dataset = self.csv_to_hf()
-        self.tokenized_dataset = self.dataset.map(self.preprocess_function,
-                                                  batched=True,
-                                                  num_proc=1,
-                                                  load_from_cache_file=False,
-                                                  desc="Running Tokenizer on Dataset")
     def init_LLM_n_tokenizer(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, use_auth_token="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")
-        self.pad_token = self.tokenizer.eos_token_id if self.tokenizer.pad_token_id is None else self.tokenizer.pad_token_id
+        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, token="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")
+        self.tokenizer.pad_token_id = self.tokenizer.eos_token_id if self.tokenizer.pad_token_id is None else self.tokenizer.pad_token
 
         # login()
 
@@ -159,10 +151,10 @@ class FewSoftModel():
         train_ds = self.tokenized_dataset["train"]
         eval_ds = self.tokenized_dataset["valid"]
 
-        batch_size = 16
+        batch_size = 4
         # train_sampler = DistributedSampler(train_ds)
-        self.train_dataloader = DataLoader(train_ds, shuffle=True, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True)
-        self.eval_dataloader = DataLoader(eval_ds, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True) 
+        self.train_dataloader = DataLoader(train_ds, shuffle=True, collate_fn=self.collate_fn, batch_size=batch_size, pin_memory=True)
+        self.eval_dataloader = DataLoader(eval_ds, collate_fn=self.collate_fn, batch_size=batch_size, pin_memory=True) 
 
         lr = 3e-2
         self.num_epochs = 50
@@ -173,62 +165,35 @@ class FewSoftModel():
             num_warmup_steps=0,
             num_training_steps=(len(self.train_dataloader) * self.num_epochs),
         )
+    
+    def collate_fn(self, batch):
+        # Use the transformers collator to handle the tokenization padding
+        assert all(isinstance(sample, dict) for sample in batch), "Batch items must be of type dict."
+        assert all('label' in sample for sample in batch)
 
-    def csv_to_hf(self) -> DatasetDict:
-        path = f"~/research_projects/FewSoftPrompting/data/processed/{self.num_shots}shot/{self.task}"
-        if self.task != "siqa":
-            splits = ["train", "test", "valid"]
-        else:
-            splits = ["train", "valid"]
-        dsd = DatasetDict()
-        for elem in splits:
-            dataset = pd.read_csv(f"{path}/{elem}.csv")
-            dsd[elem] = Dataset.from_pandas(dataset)
-        return dsd
+        for sample in batch:
+            sample['label'] = LABELS_MAP[self.task][sample['label']]
 
-    def preprocess_function(self, dataset, text="text", label="label"):
-        batch_size = len(dataset[text])
+        data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer, padding=True, return_tensors='pt')
+        batch = data_collator(batch)
 
-        inputs = [example for example in dataset[text]]
-        model_inputs = self.tokenizer(inputs)
-
-        max_length = max([len(input_ids) for input_ids in model_inputs["input_ids"]])
-        max_model_length = self.tokenizer.model_max_length
-        max_length = min(max_length, max_model_length)
-
-        targets = [str(y) for y in dataset[label]]
-        labels = self.tokenizer(targets)
-        
-        for i in range(batch_size):
-            sample_input_ids = model_inputs["input_ids"][i]
-            label_input_ids = labels["input_ids"][i]
-            model_inputs["input_ids"][i] = [self.pad_token] * (
-                max_length - len(sample_input_ids)
-            ) + sample_input_ids
-            model_inputs["attention_mask"][i] = [0] * (max_length - len(sample_input_ids)) + model_inputs[
-                "attention_mask"
-            ][i]
-            labels["input_ids"][i] = [-100] * (max_length - len(sample_input_ids)) + label_input_ids
-            # print(model_inputs["input_ids"][i][:max_length])
-            model_inputs["input_ids"][i] = torch.tensor(model_inputs["input_ids"][i][:max_length])
-            model_inputs["attention_mask"][i] = torch.tensor(model_inputs["attention_mask"][i][:max_length])
-            labels["input_ids"][i] = torch.tensor(labels["input_ids"][i][:max_length])
-        model_inputs["labels"] = labels["input_ids"]
-        return model_inputs
+        # Convert label strings to integers
+        return batch
     
     def train(self):
         device = "cuda"
         torch.cuda.empty_cache()
-        self.PEFT_model.to(device)
         # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
-
         for epoch in range(self.num_epochs):
             print(f"Epoch: {epoch}")
             self.PEFT_model.train()
             total_loss = 0
             for step, batch in enumerate(tqdm(self.train_dataloader)):
                 batch = {k: v.to(device) for k, v in batch.items()}
+                # print(f"prefix_labels shape: {prefix_labels.shape}")
+                batch["labels"] = batch["labels"].unsqueeze(-1)
                 outputs = self.PEFT_model(**batch)
+                print(outputs)
                 loss = outputs.loss
                 total_loss += loss.detach().float()
                 loss.backward()
