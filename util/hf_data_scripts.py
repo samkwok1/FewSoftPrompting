@@ -133,7 +133,6 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
 
         # now turn this into a dictionary and add to list
         hf_examples.append({'text': example, 'label': hf_dataset[i]['label']})
-    print(hf_examples)
     return hf_examples
 
 
