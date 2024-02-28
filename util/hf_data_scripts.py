@@ -2,15 +2,16 @@ import pandas as pd
 import sys
 from datasets import Dataset, DatasetDict, load_dataset
 import random
+import os
 
 
 def get_letter(task, label):
     if task == "piqa":
         return 'A' if label == 0 else 'B'
     elif task == "siqa":
-        return 'A' if label == '1' else ('B' if label == '2' else 'C')
+        return 'A' if str(label) == '1' else ('B' if label == '2' else 'C')
     else:  # task is 'swag'
-        return 'A' if label == '0' else ('B' if label == '1' else ('C' if label == '2' else 'D'))
+        return 'A' if str(label) == '0' else ('B' if label == '1' else ('C' if label == '2' else 'D'))
 
 
 def get_columns(task):
@@ -24,19 +25,6 @@ def get_columns(task):
         return ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
     else:
         assert False, "get_columns did not return when it should have"
-
-
-# def get_prompt(task):
-#     assert task in ['piqa', 'siqa', 'swag'], "Please ensure task is one of piqa, siqa, or swag."
-
-#     if task == 'piqa':
-#         return "Task: This is the PIQA prompt."
-#     elif task == 'siqa':
-#         return "Task: This is the SIQA prompt."
-#     elif task == 'swag':
-#         return "Task: This is the HellaSwag prompt."
-#     else:
-#         assert False, "get_prompt did not return when it should have"
 
 
 def zero_shot(hf_dataset, task_columns, column_names, task_name):
@@ -56,6 +44,7 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         Label: label value
     '''
     hf_examples = []
+    counter = 0
     for i in range(len(hf_dataset)):
         # how example is always started
         example = ""
@@ -73,7 +62,8 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
             for j, column in enumerate(task_columns[:-1]):
                 example += "    {}: {}\n".format(column_names[j], hf_dataset[i][column])
         example += "    {}:(".format('Answer')
-        hf_examples.append({'text': example, 'label': hf_dataset[i]['label']})
+
+        hf_examples.append({'text': example, 'label': get_letter(task_name, hf_dataset[i]['label']) + ')'})
     return hf_examples
 
 
@@ -114,7 +104,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
             else:
                 for j, column in enumerate(task_columns[:-1]):
                     example += "    {}: {}\n".format(column_names[j], hf_dataset[random_index][column])
-            example += "    {}: {}\n\n".format('Answer', get_letter(task_name, hf_dataset[random_index]['label']))
+            example += "    {}:({})\n\n".format('Answer', get_letter(task_name, hf_dataset[random_index]['label']))
         
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
@@ -132,7 +122,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
         example += "    {}:(".format('Answer')
 
         # now turn this into a dictionary and add to list
-        hf_examples.append({'text': example, 'label': hf_dataset[i]['label']})
+        hf_examples.append({'text': example, 'label': get_letter(task_name, hf_dataset[i]['label']) + ')'})
     return hf_examples
 
 
@@ -183,9 +173,6 @@ def make_dataset(task, save, num_shots):
         test_examples = zero_shot(test_dataset, task_columns, column_names, task)
         hf_test = Dataset.from_list(test_examples)
         dsd['test'] = hf_test
-    
-    # print dsd to make sure it looks how it needs to and save it when required
-    # print(dsd)
 
     # Convert each hf dataset to Pandas DataFrame
     df_train = hf_train.to_pandas()
@@ -195,12 +182,18 @@ def make_dataset(task, save, num_shots):
 
     # # Save the DataFrame to CSV
     if save:
-        # csv_save_path = save_path + "/your_dataset.csv"
-        # df.to_csv(csv_save_path, index=False)
-        pass
-    if save:
-        dsd.save_to_disk("../data/processed/hf-{}".format(task))
-    return dsd
+        if task != "siqa":
+            splits = ["train", "test", "valid"]
+            datasets = [df_train, df_validate, df_test]
+        else:
+            splits = ["train", "valid"]
+            datasets = [df_train, df_validate]
+        for dataset, dataframe in zip(splits, datasets):
+            csv_save_path = f"./../data/processed/{num_shots}shot/{task}"
+            os.makedirs(csv_save_path, exist_ok=True)
+            dataframe.to_csv(f"{csv_save_path}/{dataset}.csv", index=False)
+    else:
+        return dsd
 
 
 def main():
