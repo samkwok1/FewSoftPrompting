@@ -5,6 +5,7 @@ import random
 import os
 
 
+
 def get_letter(task, label):
     if task == "piqa":
         return 'A' if label == 0 else 'B'

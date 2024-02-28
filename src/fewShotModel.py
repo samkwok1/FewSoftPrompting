@@ -1,18 +1,19 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
-from datasets import DatasetDict, load_dataset
+from datasets import DatasetDict, load_dataset, Dataset
 import os
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
-from util.hf_data_scripts import make_dataset
 import pandas as pd
+from huggingface_hub import login
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 LABELS_DICT = {
-    "siqa": [1, 2, 3],
-    "piqa": [0, 1],
-    "swag": [0, 1, 2, 3]
+    "siqa": ['1', '2', '3'],
+    "piqa": ['0', '1'],
+    "swag": ['0', '1', '2', '3']
 }
 
 INNIT_DICT = {
@@ -106,6 +107,7 @@ class FewSoftModel():
         self.dataset = None
         self.tokenized_dataset = None
         self.tokenizer = None
+        self.num_virtual_tokens = None
         self.pad_token = None
         self.LLM_model = None
         self.PEFT_model = None
@@ -116,29 +118,38 @@ class FewSoftModel():
         self.num_epochs = None
     
     def init_dataset(self):
-        self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[task]])
+        self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[self.task]])
         self.dataset = self.csv_to_hf()
         self.tokenized_dataset = self.dataset.map(self.preprocess_function,
                                                   batched=True,
                                                   num_proc=1,
-                                                  remove_columns=self.dataset["train"].column_names,
                                                   load_from_cache_file=False,
                                                   desc="Running Tokenizer on Dataset")
     def init_LLM_n_tokenizer(self):
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, use_auth_token="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")
         self.pad_token = self.tokenizer.eos_token_id if self.tokenizer.pad_token_id is None else self.tokenizer.pad_token_id
-        self.LLM_model = LLM(
-            model=self.model_path,
-            download_dir = ""
+
+        # login()
+
+        self.LLM_model = AutoModelForCausalLM.from_pretrained(
+            pretrained_model_name_or_path=self.model_path,
+            device_map='auto',
+            cache_dir = "./llama13b",
+            token="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"
         )
+
+        self.num_virtual_tokens = len(self.tokenizer(f"{INNIT_DICT[self.task]}")["input_ids"])
 
     def init_PEFT(self): 
         peft_config = PromptTuningConfig(
+            num_layers=40,
+            token_dim=5120,
+            num_attention_heads=40,
             task_type=TaskType.CAUSAL_LM,
             prompt_tuning_init=PromptTuningInit.TEXT,
             prompt_tuning_init_text=f"{INNIT_DICT[self.task]}",
-            num_virtual_tokens=len(self.tokenizer(f"{INNIT_DICT[self.task]}")["input_ids"]),
-            tokenizer_name_or_path=self.tokenizer_path
+            num_virtual_tokens=self.num_virtual_tokens,
+            tokenizer_name_or_path=self.tokenizer_path,
         )
 
         self.PEFT_model = get_peft_model(model=self.LLM_model, peft_config=peft_config)
@@ -146,10 +157,10 @@ class FewSoftModel():
 
     def init_DataLoader_n_Optimizer(self):
         train_ds = self.tokenized_dataset["train"]
-        eval_ds = self.tokenized_dataset["eval"]
+        eval_ds = self.tokenized_dataset["valid"]
 
         batch_size = 16
-
+        # train_sampler = DistributedSampler(train_ds)
         self.train_dataloader = DataLoader(train_ds, shuffle=True, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True)
         self.eval_dataloader = DataLoader(eval_ds, collate_fn=default_data_collator, batch_size=batch_size, pin_memory=True) 
 
@@ -164,7 +175,7 @@ class FewSoftModel():
         )
 
     def csv_to_hf(self) -> DatasetDict:
-        path = f"./../data/processed/{self.num_shots}shot/{self.task}"
+        path = f"~/research_projects/FewSoftPrompting/data/processed/{self.num_shots}shot/{self.task}"
         if self.task != "siqa":
             splits = ["train", "test", "valid"]
         else:
@@ -172,56 +183,52 @@ class FewSoftModel():
         dsd = DatasetDict()
         for elem in splits:
             dataset = pd.read_csv(f"{path}/{elem}.csv")
-            dsd[elem] = dataset
+            dsd[elem] = Dataset.from_pandas(dataset)
         return dsd
 
     def preprocess_function(self, dataset, text="text", label="label"):
-        max_length = len(dataset[text][0]) + 30
         batch_size = len(dataset[text])
 
         inputs = [example for example in dataset[text]]
         model_inputs = self.tokenizer(inputs)
 
+        max_length = max([len(input_ids) for input_ids in model_inputs["input_ids"]])
+        max_model_length = self.tokenizer.model_max_length
+        max_length = min(max_length, max_model_length)
+
         targets = [str(y) for y in dataset[label]]
         labels = self.tokenizer(targets)
-
-        for i in range(batch_size):
-            sample_input_ids = model_inputs["input_ids"][i]
-            label_input_ids = labels["input_ids"][i] + [self.tokenizer.pad_token_id]
-            model_inputs["input_ids"][i] = sample_input_ids + label_input_ids
         
         for i in range(batch_size):
             sample_input_ids = model_inputs["input_ids"][i]
             label_input_ids = labels["input_ids"][i]
-
-            model_inputs["input_ids"][i] = [self.tokenizer.pad_token_id] * (
+            model_inputs["input_ids"][i] = [self.pad_token] * (
                 max_length - len(sample_input_ids)
             ) + sample_input_ids
-
-            model_inputs["attention_mask"][i] = [0] * (
-                max_length - len(sample_input_ids)
-            ) + model_inputs["attention_mask"][i]
-
-            model_inputs["attention_mask"][i] = [0] * (max_length - len(sample_input_ids)) + label_input_ids
-
+            model_inputs["attention_mask"][i] = [0] * (max_length - len(sample_input_ids)) + model_inputs[
+                "attention_mask"
+            ][i]
+            labels["input_ids"][i] = [-100] * (max_length - len(sample_input_ids)) + label_input_ids
+            # print(model_inputs["input_ids"][i][:max_length])
             model_inputs["input_ids"][i] = torch.tensor(model_inputs["input_ids"][i][:max_length])
             model_inputs["attention_mask"][i] = torch.tensor(model_inputs["attention_mask"][i][:max_length])
             labels["input_ids"][i] = torch.tensor(labels["input_ids"][i][:max_length])
-
         model_inputs["labels"] = labels["input_ids"]
         return model_inputs
     
     def train(self):
         device = "cuda"
-        model = self.PEFT_model.to(device)
+        torch.cuda.empty_cache()
+        self.PEFT_model.to(device)
+        # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
 
         for epoch in range(self.num_epochs):
             print(f"Epoch: {epoch}")
-            model.train()
+            self.PEFT_model.train()
             total_loss = 0
             for step, batch in enumerate(tqdm(self.train_dataloader)):
                 batch = {k: v.to(device) for k, v in batch.items()}
-                outputs = model(**batch)
+                outputs = self.PEFT_model(**batch)
                 loss = outputs.loss
                 total_loss += loss.detach().float()
                 loss.backward()
@@ -229,13 +236,13 @@ class FewSoftModel():
                 self.lr_scheduler.step()
                 self.optimizer.zero_grad()
 
-            model.eval()
+            self.PEFT_model.eval()
             eval_loss = 0
             eval_preds = []
             for step, batch in enumerate(tqdm(self.eval_dataloader)):
                 batch = {k: v.to(device) for k, v in batch.items()}
                 with torch.no_grad():
-                    outputs = model(**batch)
+                    outputs = self.PEFT_model(**batch)
                 loss = outputs.loss
                 eval_loss += loss.detach().float()
                 eval_preds.extend(
