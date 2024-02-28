@@ -8,7 +8,7 @@ def get_prompt(task):
     assert task in ["sst", "quora", "sts"], "Ensure task is one of sst, quora, or sts. Task is currently: {}".format(task)
     
     if task == "sst":
-        return "Please rate the sentiment of the sentence, with 0 being negative, 1 being somewhat negative, 2 being neutral, 3 being somewhat positive, and 4 being positive. Please only include integers."
+        return "Prompt: Please rate the sentiment of the sentence, with 0 being negative, 1 being somewhat negative, 2 being neutral, 3 being somewhat positive, and 4 being positive. Please only include integers."
     elif task == "quora":
         return "Prompt: Please say 1 if sentence2 paraphrases sentence2, or say 0 if sentence2 does not paraphrase sentence1. Please only include integers."
     elif task == "sts":
