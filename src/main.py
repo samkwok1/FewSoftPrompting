@@ -54,7 +54,6 @@ def init_dataset(num_shots, task, tokenizer):
     tokenized_dataset = {split: subset.map(
                                     lambda examples: tokenizer(examples["prompt"]),
                                     batched=True,
-                                    num_proc=1,
                                     remove_columns=["label"],
                                     load_from_cache_file=False,
                                     desc=f"Running Tokenizer on {split} Dataset")

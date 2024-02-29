@@ -190,7 +190,6 @@ class FewSoftModel():
             model=self.PEFT_model,
             args=training_args,
             train_dataset=self.tokenized_dataset["train"],
-            eval_dataset=self.tokenized_dataset["valid"],
             data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
         )
         trainer.train()
