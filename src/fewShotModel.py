@@ -135,9 +135,10 @@ class FewSoftModel():
     def init_PEFT(self): 
         peft_config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
-            prompt_tuning_init=PromptTuningInit.TEXT,
-            prompt_tuning_init_text=f"{INNIT_DICT_FEW_SHOT[self.task]}",
-            num_virtual_tokens=self.num_virtual_tokens,
+            prompt_tuning_init=PromptTuningInit.RANDOM,
+            # prompt_tuning_init_text=f"{INNIT_DICT_FEW_SHOT[self.task]}",
+            num_virtual_tokens= 8,
+            # self.num_virtual_tokens,
             tokenizer_name_or_path=self.tokenizer_path,
         )
 

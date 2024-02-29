@@ -52,7 +52,7 @@ def init_dataset(num_shots, task, tokenizer):
     # self.target_max_length = max([len(self.tokenizer(class_label)) for class_label in LABELS_DICT[self.task]])
     dataset = csv_to_hf(num_shots, task)
     tokenized_dataset = {split: subset.map(
-                                    lambda examples: preprocess_function(examples, tokenizer=tokenizer, text="text", label="label"),
+                                    lambda examples: tokenizer(examples["prompt"]),
                                     batched=True,
                                     num_proc=1,
                                     remove_columns=["label"],
@@ -83,6 +83,7 @@ def main():
     model.tokenized_dataset = load_from_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
 
     print(model.tokenized_dataset)
+    print(model.tokenized_dataset["prompt"][0])
 
     print("Initializing PEFT model")
     model.init_PEFT()
