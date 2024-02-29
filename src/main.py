@@ -55,12 +55,12 @@ def init_dataset(num_shots, task, tokenizer):
                                     lambda examples: preprocess_function(examples, tokenizer=tokenizer, text="text", label="label"),
                                     batched=True,
                                     num_proc=1,
-                                    remove_columns=["text"],
+                                    remove_columns=["label"],
                                     load_from_cache_file=False,
                                     desc=f"Running Tokenizer on {split} Dataset")
                         for split, subset in dataset.items()}
     tokenized_dataset = DatasetDict(tokenized_dataset)
-    tokenized_dataset.save_to_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}')
+    tokenized_dataset.save_to_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
 
 def main():
     # dist.init_process_group(backend='nccl')
@@ -75,19 +75,20 @@ def main():
 
     task = "piqa"
     num_shots = 3
-    dataset = True
+    dataset = False
     if not dataset:
         tokenizer = model.tokenizer
         init_dataset(num_shots, task, tokenizer)
 
-    model.tokenized_dataset = load_from_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}')
+    model.tokenized_dataset = load_from_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
+
+    print(model.tokenized_dataset)
 
     print("Initializing PEFT model")
     model.init_PEFT()
     print("Initializing dataloader and optimizer")
     model.init_DataLoader_n_Optimizer()
     print("Training Model")
-    model.PEFT_model.to("cuda")
     model.train()
 
 if __name__ == "__main__":

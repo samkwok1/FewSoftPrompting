@@ -8,11 +8,11 @@ import os
 
 def get_letter(task, label):
     if task == "piqa":
-        return 'A' if label == 0 else 'B'
+        return '0' if label == 0 else '1'
     elif task == "siqa":
-        return 'A' if str(label) == '1' else ('B' if label == '2' else 'C')
+        return '1' if str(label) == '1' else ('2' if label == '2' else '3')
     else:  # task is 'swag'
-        return 'A' if str(label) == '0' else ('B' if label == '1' else ('C' if label == '2' else 'D'))
+        return '0' if str(label) == '0' else ('1' if label == '1' else ('2' if label == '2' else '3'))
 
 
 def get_columns(task):
@@ -55,16 +55,16 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
             # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
             example += "    {}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
             example += "    {}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "    {}: {}\n".format('(A)', hf_dataset[i]['endings'][0])
-            example += "    {}: {}\n".format('(B)', hf_dataset[i]['endings'][1])
-            example += "    {}: {}\n".format('(C)', hf_dataset[i]['endings'][2])
-            example += "    {}: {}\n".format('(D)', hf_dataset[i]['endings'][3])
+            example += "    {}: {}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "    {}: {}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "    {}: {}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "    {}: {}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
                 example += "    {}: {}\n".format(column_names[j], hf_dataset[i][column])
         example += "    {}:(".format('Answer')
 
-        hf_examples.append({'text': example, 'label': get_letter(task_name, hf_dataset[i]['label']) + ')'})
+        hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
 
@@ -96,10 +96,10 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
                 # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
                 example += "    {}: {}\n".format('Activity', hf_dataset[random_index]['activity_label'])
                 example += "    {}: {}\n".format('Context', hf_dataset[random_index]['ctx'])
-                example += "    {}: {}\n".format('(A)', hf_dataset[random_index]['endings'][0])
-                example += "    {}: {}\n".format('(B)', hf_dataset[random_index]['endings'][1])
-                example += "    {}: {}\n".format('(C)', hf_dataset[random_index]['endings'][2])
-                example += "    {}: {}\n".format('(D)', hf_dataset[random_index]['endings'][3])
+                example += "    {}: {}\n".format('0', hf_dataset[random_index]['endings'][0])
+                example += "    {}: {}\n".format('1', hf_dataset[random_index]['endings'][1])
+                example += "    {}: {}\n".format('2', hf_dataset[random_index]['endings'][2])
+                example += "    {}: {}\n".format('3', hf_dataset[random_index]['endings'][3])
 
             # generate single example using random int and the column names and values at this random int row
             else:
@@ -111,10 +111,10 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
         if task_name == 'swag':
             example += "    {}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
             example += "    {}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "    {}: {}\n".format('(A)', hf_dataset[i]['endings'][0])
-            example += "    {}: {}\n".format('(B)', hf_dataset[i]['endings'][1])
-            example += "    {}: {}\n".format('(C)', hf_dataset[i]['endings'][2])
-            example += "    {}: {}\n".format('(D)', hf_dataset[i]['endings'][3])
+            example += "    {}: {}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "    {}: {}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "    {}: {}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "    {}: {}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
                 example += "    {}: {}\n".format(column_names[j], hf_dataset[i][column])
@@ -123,7 +123,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
         example += "    {}:(".format('Answer')
 
         # now turn this into a dictionary and add to list
-        hf_examples.append({'text': example, 'label': get_letter(task_name, hf_dataset[i]['label']) + ')'})
+        hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
 
@@ -202,6 +202,7 @@ def main():
         args should have the form: python hf_data_scripts.py {piqa, siqa, swag} save num_shots
     '''
     # arg handling
+    os.environ['HF_HUB_OFFLINE']=1
     args = sys.argv[1:]
 
     task = args[0]

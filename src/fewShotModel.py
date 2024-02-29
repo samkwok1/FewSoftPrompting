@@ -1,4 +1,4 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding
+from transformers import AutoModelForCausalLM, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding, TrainingArguments, Trainer, DataCollatorForLanguageModeling
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
 from datasets import DatasetDict, load_dataset, Dataset
@@ -9,7 +9,6 @@ from vllm import LLM, SamplingParams
 import pandas as pd
 from huggingface_hub import login
 from torch.nn.parallel import DistributedDataParallel as DDP
-
 LABELS_DICT = {
     "siqa": ['1', '2', '3'],
     "piqa": ['0', '1'],
@@ -20,14 +19,14 @@ LABELS_MAP = {
     "piqa": {'A)': 0, 'B)': 1}
 }
 
-INNIT_DICT = {
+INNIT_DICT_FEW_SHOT = {
     "siqa": """
     Please find the best answer to the question posed. Three example completions are provided next.
     Context: Sydney got Sasha's picture taken secretly after silently stalking them throughout the town.
     Question: What does Sydney need to do before this?
-    (A): needed to find Sasha
-    (B): print it
-    (C): needed to be invisible
+    0: needed to find Sasha
+    1: print it
+    2: needed to be invisible
     Answer:(A)
 
     Context: Quinn, while playing with his new toy, accidentally broke their mother\'s favorite vase and quickly tried to buy a new one.
@@ -48,14 +47,14 @@ INNIT_DICT = {
     "piqa": """
     Please find the best answer to the question posed. Two example completions are provided next.
     Question: How do I make sure that chocolate nutella tart is easy to cut before serving?
-    (A): Take out the tart from the fridge about 10 minutes before serving so it is easier to cute
-    (B): Take out the tart from the pastry wheel about 10 minutes before serving so it is easier to cute
-    Answer:(A)
+    0: Take out the tart from the fridge about 10 minutes before serving so it is easier to cute
+    1: Take out the tart from the pastry wheel about 10 minutes before serving so it is easier to cute
+    Answer:0
 
     Question: Scrub rough stains on bathroom tile.
-    (A): Apply scrub to a blow dryer.
-    (B): Apply scrub to a power drill.
-    Answer:(B)
+    0: Apply scrub to a blow dryer.
+    1: Apply scrub to a power drill.
+    Answer1
 
     """,
     "swag": """
@@ -130,16 +129,14 @@ class FewSoftModel():
             token="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"
         )
 
-        self.num_virtual_tokens = len(self.tokenizer(f"{INNIT_DICT[self.task]}")["input_ids"])
+        self.num_virtual_tokens = len(self.tokenizer(f"{INNIT_DICT_FEW_SHOT[self.task]}")["input_ids"])
+        print(f"num_tokens: {self.num_virtual_tokens}")
 
     def init_PEFT(self): 
         peft_config = PromptTuningConfig(
-            num_layers=40,
-            token_dim=5120,
-            num_attention_heads=40,
             task_type=TaskType.CAUSAL_LM,
             prompt_tuning_init=PromptTuningInit.TEXT,
-            prompt_tuning_init_text=f"{INNIT_DICT[self.task]}",
+            prompt_tuning_init_text=f"{INNIT_DICT_FEW_SHOT[self.task]}",
             num_virtual_tokens=self.num_virtual_tokens,
             tokenizer_name_or_path=self.tokenizer_path,
         )
@@ -176,11 +173,29 @@ class FewSoftModel():
 
         data_collator = DataCollatorWithPadding(tokenizer=self.tokenizer, padding=True, return_tensors='pt')
         batch = data_collator(batch)
+        batch["labels"] = batch["labels"].unsqueeze(-1)
 
         # Convert label strings to integers
         return batch
     
     def train(self):
+        training_args = TrainingArguments(
+            output_dir="outputs",
+            auto_find_batch_size=True,
+            learning_rate=0.0035,
+            num_train_epochs=8
+        )
+        trainer = Trainer(
+            model=self.PEFT_model,
+            args=training_args,
+            train_dataset=self.tokenized_dataset["train"],
+            eval_dataset=self.tokenized_dataset["valid"],
+            data_collator=DataCollatorForLanguageModeling(self.tokenizer, mlm=False)
+        )
+        trainer.train()
+        trainer.model.save_pretrained("outputs")
+
+    def train_custom_loop(self):
         device = "cuda"
         torch.cuda.empty_cache()
         # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
