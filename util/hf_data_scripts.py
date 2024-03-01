@@ -45,7 +45,6 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         Label: label value
     '''
     hf_examples = []
-    counter = 0
     for i in range(len(hf_dataset)):
         # how example is always started
         example = ""
@@ -61,8 +60,8 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
             example += "    {}: {}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
-                example += "    {}: {}\n".format(column_names[j], hf_dataset[i][column])
-        example += "    {}:(".format('Answer')
+                example += "    {}:{}\n".format(column_names[j], hf_dataset[i][column])
+        example += "    {}:".format('Answer')
 
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
@@ -105,22 +104,22 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
             else:
                 for j, column in enumerate(task_columns[:-1]):
                     example += "    {}: {}\n".format(column_names[j], hf_dataset[random_index][column])
-            example += "    {}:({})\n\n".format('Answer', get_letter(task_name, hf_dataset[random_index]['label']))
+            example += "    {}:{}\n\n".format('Answer', hf_dataset[random_index]['label'])
         
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
-            example += "    {}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "    {}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "    {}: {}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "    {}: {}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "    {}: {}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "    {}: {}\n".format('3', hf_dataset[i]['endings'][3])
+            example += "    {}:{}\n".format('Activity', hf_dataset[i]['activity_label'])
+            example += "    {}:{}\n".format('Context', hf_dataset[i]['ctx'])
+            example += "    {}:{}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "    {}:{}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "    {}:{}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "    {}:{}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
-                example += "    {}: {}\n".format(column_names[j], hf_dataset[i][column])
+                example += "    {}:{}\n".format(column_names[j], hf_dataset[i][column])
         
         # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
-        example += "    {}:(".format('Answer')
+        example += "    {}:".format('Answer')
 
         # now turn this into a dictionary and add to list
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
@@ -157,6 +156,7 @@ def make_dataset(task, save, num_shots):
     train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], None
     if task != 'siqa':
         test_dataset = task_dataset['test']
+    print(train_dataset.features["label"])
 
     # make train list, validation list which are always used
     train_examples = few_shot(train_dataset, task_columns, column_names, task, num_shots)  # need to check implementation of this!!!
@@ -190,7 +190,7 @@ def make_dataset(task, save, num_shots):
             splits = ["train", "valid"]
             datasets = [df_train, df_validate]
         for dataset, dataframe in zip(splits, datasets):
-            csv_save_path = f"./../data/processed/{num_shots}shot/{task}"
+            csv_save_path = f"./../data/processed/{task}/{num_shots}shot"
             os.makedirs(csv_save_path, exist_ok=True)
             dataframe.to_csv(f"{csv_save_path}/{dataset}.csv", index=False)
     else:

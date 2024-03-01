@@ -8,7 +8,7 @@ import pandas as pd
 from transformers import AutoTokenizer
 
 def csv_to_hf(num_shots, task) -> DatasetDict:
-    path = f"~/research_projects/FewSoftPrompting/data/processed/{num_shots}shot/{task}"
+    path = f"~/research_projects/FewSoftPrompting/data/processed/{task}/{num_shots}shot"
     if task != "siqa":
         splits = ["train", "test", "valid"]
     else:

@@ -1,4 +1,4 @@
-from transformers import AutoModelForSequenceClassification, AutoModelForMultipleChoice, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding, TrainingArguments, Trainer, DataCollatorForLanguageModeling
+from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoModelForMultipleChoice, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding, TrainingArguments, Trainer, DataCollatorForLanguageModeling
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
 from datasets import DatasetDict, load_dataset, Dataset
@@ -20,18 +20,22 @@ import pandas as pd
 device = "cuda" if torch.cuda.is_available() else "cpu"
 print(device)
 print("Init model and tokenizer")
-path = "meta-llama/Llama-2-7b-chat-hf"
+path = "meta-llama/Llama-2-13b-chat-hf"
 tokenizer = AutoTokenizer.from_pretrained(path, token="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")
+tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
 tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
+
+print(repr(tokenizer.pad_token))
 
 # login()
 
-LLM_model = AutoModelForSequenceClassification.from_pretrained(
+LLM_model = AutoModelForCausalLM.from_pretrained(
     pretrained_model_name_or_path=path,
     device_map='auto',
-    cache_dir = "./llama7b",
+    cache_dir = "./llama13b",
     token="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"
 )
+print(LLM_model.config)
 
 print("Init dataset")
 task = "piqa"
