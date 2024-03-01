@@ -3,6 +3,7 @@ import sys
 from datasets import Dataset, DatasetDict, load_dataset
 import random
 import os
+import csv
 
 
 
@@ -62,7 +63,6 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
             for j, column in enumerate(task_columns[:-1]):
                 example += "    {}:{}\n".format(column_names[j], hf_dataset[i][column])
         example += "    {}:".format('Answer')
-
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
@@ -126,17 +126,32 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
     return hf_examples
 
 
+def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
+    data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots)
+    fields = list(data[0].keys())
+    csv_file = "./preprocessed/{}/{}/{}-shot.csv".format(task_name, split, num_shots)
+    with open(csv_file, mode='w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=fields, quoting=csv.QUOTE_NONNUMERIC)
+        
+        # Write the header
+        writer.writeheader()
+        
+        # Write the data
+        for row in data:
+            writer.writerow(row)
+    return data, csv_file
 
-def make_dataset(task, save, num_shots):
+
+def make_dataset(task, save, num_shots, do_eval):
     '''
     piqa: has train, dev, and test splits. for test all labels come as -1. need to test on leaderboard
     swag: has train, dev, and test splits. for test all labels come as ''. need to test on leaderboard
     siqa: only has train, dev splits. need to download test question and test on leaderboard.
     '''
     # init for purposes of defining it in conditional and being able to refer to it outside
-    test_examples = None
-    hf_test = None
-    df_test = None
+    # test_examples = None
+    # hf_test = None
+    # df_test = None
     # get hard-coded prompt and columns of given task
     # prompt = get_prompt(task)
     task_columns, column_names = get_columns(task)
@@ -159,49 +174,56 @@ def make_dataset(task, save, num_shots):
     print(train_dataset.features["label"])
 
     # make train list, validation list which are always used
-    train_examples = few_shot(train_dataset, task_columns, column_names, task, num_shots)  # need to check implementation of this!!!
-    validation_examples = zero_shot(validation_dataset, task_columns, column_names, task)
+    # train_examples = few_shot(train_dataset, task_columns, column_names, task, num_shots)
+    # validation_examples = zero_shot(validation_dataset, task_columns, column_names, task)
+    
+    # do few shot for each of these and save to csv
+    if save:
+        for nshots in [0, 1, 3, 5]:
+            few_shot_to_csv(train_dataset, task_columns, column_names, task, nshots, "train")
+            few_shot_to_csv(validation_dataset, task_columns, column_names, task, nshots, "validation")
+        if task != 'siqa':
+            few_shot_to_csv(test_dataset, task_columns, column_names, task, 0, "test")
 
+    # # always convert train and validation list into hf dataset and initialize our dsd with those
+    # hf_train = Dataset.from_list(train_examples)
+    # hf_validate = Dataset.from_list(validation_examples)
+    # dsd = DatasetDict({"train": hf_train, "validation": hf_validate})  # REAL ONE...EVENTUALLY UNCOMMENT
+    # # dsd = DatasetDict({"train": hf_validate, "validation": hf_validate})  # FOR DEBUGGING USE
 
-    # always convert train and validation list into hf dataset and initialize our dsd with those
-    hf_train = Dataset.from_list(train_examples)
-    hf_validate = Dataset.from_list(validation_examples)
-    dsd = DatasetDict({"train": hf_train, "validation": hf_validate})  # REAL ONE...EVENTUALLY UNCOMMENT
-    # dsd = DatasetDict({"train": hf_validate, "validation": hf_validate})  # FOR DEBUGGING USE
+    # # when our task isn't siqa we also need to make hf test dataset and add it to dsd
+    # if task != 'siqa':
+    #     test_examples = zero_shot(test_dataset, task_columns, column_names, task)
+    #     hf_test = Dataset.from_list(test_examples)
+    #     dsd['test'] = hf_test
 
-    # when our task isn't siqa we also need to make hf test dataset and add it to dsd
-    if task != 'siqa':
-        test_examples = zero_shot(test_dataset, task_columns, column_names, task)
-        hf_test = Dataset.from_list(test_examples)
-        dsd['test'] = hf_test
-
-    # Convert each hf dataset to Pandas DataFrame
-    df_train = hf_train.to_pandas()
-    df_validate = hf_validate.to_pandas()
-    if task != "siqa":
-        df_test = hf_test.to_pandas()
+    # # Convert each hf dataset to Pandas DataFrame
+    # df_train = hf_train.to_pandas()
+    # df_validate = hf_validate.to_pandas()
+    # if task != "siqa":
+    #     df_test = hf_test.to_pandas()
 
     # # Save the DataFrame to CSV
-    if save:
-        if task != "siqa":
-            splits = ["train", "test", "valid"]
-            datasets = [df_train, df_validate, df_test]
-        else:
-            splits = ["train", "valid"]
-            datasets = [df_train, df_validate]
-        for dataset, dataframe in zip(splits, datasets):
-            csv_save_path = f"{dataset}.csv"
-            # f"./../data/processed/{task}/{num_shots}shot"
-            os.makedirs(f"data", exist_ok=True)
+    # if save:
+    #     if task != "siqa":
+    #         splits = ["train", "test", "valid"]
+    #         datasets = [df_train, df_validate, df_test]
+    #     else:
+    #         splits = ["train", "valid"]
+    #         datasets = [df_train, df_validate]
+    #     for dataset, dataframe in zip(splits, datasets):
+    #         csv_save_path = f"{dataset}.csv"
+    #         # f"./../data/processed/{task}/{num_shots}shot"
+    #         os.makedirs(f"data", exist_ok=True)
 
-            dataframe.to_csv(f"data/{csv_save_path}", index=False)
-    else:
-        return dsd
+    #         dataframe.to_csv(f"data/{csv_save_path}", index=False)
+    # else:
+    #     return dsd
 
 
 def main():
     '''
-        args should have the form: python hf_data_scripts.py {piqa, siqa, swag} save num_shots
+        args should have the form: python hf_data_scripts.py {piqa, siqa, swag} save num_shots do_eval
     '''
     # arg handling
     args = sys.argv[1:]
@@ -212,10 +234,13 @@ def main():
     assert save == 'true' or save == 'false', "save should be either true or false"
     save = True if save == 'true' else False
     num_shots = int(args[2])
+    do_eval = args[3].lower()
+    assert do_eval == 'true' or do_eval == 'false', "save should be either true or false"
+    do_eval = True if do_eval == 'true' else False
 
 
     # create hf dict dataset with train, validate, test splits for piqa and swag and train, validate splits for siqa
-    make_dataset(task, save, num_shots)
+    make_dataset(task, save, num_shots, do_eval)
 
 if __name__ == "__main__":
     main()
