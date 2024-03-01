@@ -1,4 +1,4 @@
-from transformers import AutoModelForSequenceClassification, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding, TrainingArguments, Trainer, DataCollatorForLanguageModeling
+from transformers import AutoModelForSequenceClassification, AutoModelForMultipleChoice, AutoTokenizer, default_data_collator, get_linear_schedule_with_warmup, DataCollatorWithPadding, TrainingArguments, Trainer, DataCollatorForLanguageModeling
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType
 import torch
 from datasets import DatasetDict, load_dataset, Dataset
@@ -26,7 +26,7 @@ tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is Non
 
 # login()
 
-LLM_model = AutoModelForSequenceClassification.from_pretrained(
+LLM_model = AutoModelForMultipleChoice.from_pretrained(
     pretrained_model_name_or_path=path,
     device_map='auto',
     cache_dir = "./llama7b",
