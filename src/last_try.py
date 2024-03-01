@@ -26,7 +26,7 @@ tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is Non
 
 # login()
 
-LLM_model = AutoModelForMultipleChoice.from_pretrained(
+LLM_model = AutoModelForSequenceClassification.from_pretrained(
     pretrained_model_name_or_path=path,
     device_map='auto',
     cache_dir = "./llama7b",
