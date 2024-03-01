@@ -22,7 +22,7 @@ print(device)
 print("Init model and tokenizer")
 path = "meta-llama/Llama-2-7b-chat-hf"
 tokenizer = AutoTokenizer.from_pretrained(path, token="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")
-tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token
+tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
 # login()
 
@@ -52,7 +52,7 @@ PEFT_model = get_peft_model(model=LLM_model, peft_config=peft_config)
 PEFT_model.print_trainable_parameters()
 
 
-print("Train")
+print("Training")
 training_args = TrainingArguments(
     output_dir="outputs",
     auto_find_batch_size=True,
