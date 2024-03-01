@@ -5,6 +5,7 @@ import torch
 import os
 from datasets import DatasetDict, Dataset, load_from_disk
 import pandas as pd
+from transformers import AutoTokenizer
 
 def csv_to_hf(num_shots, task) -> DatasetDict:
     path = f"~/research_projects/FewSoftPrompting/data/processed/{num_shots}shot/{task}"
@@ -67,29 +68,26 @@ def main():
     # torch.cuda.set_device(local_rank)
     # torch.cuda.set_device(f"cuda:{os.environ['LOCAL_RANK']}")
     # device = torch.device("cuda", local_rank)
-    model = FewSoftModel(num_shots=3, tokenizer_path="meta-llama/Llama-2-13b-chat-hf", model_path="meta-llama/Llama-2-13b-chat-hf", task="piqa")
-    print("Initializing model and tokenizer")
-    model.init_LLM_n_tokenizer()
+    # model = FewSoftModel(num_shots=3, tokenizer_path="meta-llama/Llama-2-7b-chat-hf", model_path="meta-llama/Llama-2-7b-chat-hf", task="piqa")
+    # print("Initializing model and tokenizer")
     print("Initializing dataset")
-
+    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf", token="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")
+    # tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
+    # tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
     task = "piqa"
     num_shots = 3
     dataset = False
     if not dataset:
-        tokenizer = model.tokenizer
         init_dataset(num_shots, task, tokenizer)
 
-    model.tokenized_dataset = load_from_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
+    # model.tokenized_dataset = load_from_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
 
-    print(model.tokenized_dataset)
-    print(model.tokenized_dataset["prompt"][0])
-
-    print("Initializing PEFT model")
-    model.init_PEFT()
-    print("Initializing dataloader and optimizer")
-    model.init_DataLoader_n_Optimizer()
-    print("Training Model")
-    model.train()
+    # print("Initializing PEFT model")
+    # model.init_PEFT()
+    # print("Initializing dataloader and optimizer")
+    # model.init_DataLoader_n_Optimizer()
+    # print("Training Model")
+    # model.train()
 
 if __name__ == "__main__":
     main()

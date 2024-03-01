@@ -202,7 +202,6 @@ def main():
         args should have the form: python hf_data_scripts.py {piqa, siqa, swag} save num_shots
     '''
     # arg handling
-    os.environ['HF_HUB_OFFLINE']=1
     args = sys.argv[1:]
 
     task = args[0]
