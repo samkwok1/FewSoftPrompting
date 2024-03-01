@@ -7,6 +7,18 @@ import sys
 
 
 def csv_to_hf(num_shots, task) -> DatasetDict:
+    """
+    Takes a task and a particular number of shots, finds the few-shot csv associated with it
+    and turns it into an HF dataset. Creates and returns an HF DatasetDict to have the splits
+    in one structure.
+
+    Question: This function seems to grab, for n=3, the 3-shot train, 3-shot validate, and 0-shot
+    test. Is that the intended behavior and should it be? Isn't the n-shot validate is only meant to be
+    used to get LLaMa's few-shot baseline? Aside from that I thought everywhere else we only use the 0-shot
+    validate to see how our model performs (as in how the trained n-shot soft-prompt performs in a 0-shot context).
+
+    In simple words: why do we need n-shot validate at any time other than evaluating on one of our particular baselines?
+    """
     path = f"~/research_projects/FewSoftPrompting/data/processed/{task}/{num_shots}shot"
     if task != "siqa":
         splits = ["train", "test", "valid"]
