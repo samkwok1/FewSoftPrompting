@@ -19,11 +19,11 @@ def get_columns(task):
     assert task in ['piqa', 'siqa', 'swag'], "Please ensure task is one of piqa, siqa, or swag."
 
     if task == 'piqa':
-        return ['goal', 'sol1', 'sol2', 'label'], ['Question', '(A)', '(B)', 'Answer']
+        return ['goal', 'sol1', 'sol2', 'label'], ['Question', '0', '1', 'Answer']
     elif task == 'siqa':
-        return ['context', 'question', 'answerA', 'answerB', 'answerC', 'label'], ['Context', 'Question', '(A)', '(B)', '(C)', 'Answer']
+        return ['context', 'question', 'answerA', 'answerB', 'answerC', 'label'], ['Context', 'Question', '1', '2', '3', 'Answer']
     elif task == 'swag':
-        return ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
+        return ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '0', '1', '2', '3', 'Answer']
     else:
         assert False, "get_columns did not return when it should have"
 

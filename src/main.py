@@ -75,7 +75,7 @@ def main():
     # tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
     # tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
     task = "piqa"
-    num_shots = 3
+    num_shots = 1
     dataset = False
     if not dataset:
         init_dataset(num_shots, task, tokenizer)
