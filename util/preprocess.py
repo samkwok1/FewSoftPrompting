@@ -190,9 +190,11 @@ def make_dataset(task, save, num_shots):
             splits = ["train", "valid"]
             datasets = [df_train, df_validate]
         for dataset, dataframe in zip(splits, datasets):
-            csv_save_path = f"./../data/processed/{task}/{num_shots}shot"
-            os.makedirs(csv_save_path, exist_ok=True)
-            dataframe.to_csv(f"{csv_save_path}/{dataset}.csv", index=False)
+            csv_save_path = f"{dataset}.csv"
+            # f"./../data/processed/{task}/{num_shots}shot"
+            os.makedirs(f"data", exist_ok=True)
+
+            dataframe.to_csv(f"data/{csv_save_path}", index=False)
     else:
         return dsd
 
