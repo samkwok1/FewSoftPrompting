@@ -12,7 +12,7 @@ def get_prompt(task):
     elif task == "arc":
         return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
     else:  # task is wino
-        return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best completes the question. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+        return "You are a helpful AI assistant that is being asked to complete a sentence for a user. Choose the response that best fills in the blank. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
 
 
 def get_label_name(task):
@@ -59,14 +59,15 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         example = ""
         for j, column in enumerate(task_columns[:-1]):
             example += "{}: {}\n".format(column_names[j], hf_dataset[i][column])
-        example += "{}:".format('Answer')
+        example += "{}".format(get_prompt(task_name))
+        example += "{}:\n".format('Answer')
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['answer']})
         print(example)
-    print(hf_examples)
+    # print(hf_examples)
     return hf_examples
 
 
-def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
+def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split):
     '''
     Given a hugging face (training) dataset, this function should randomly sample num_shot examples to
     display as complete examples after the prompt statement. After these complete examples, it should
@@ -77,8 +78,6 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
     associated value being the true label for the incomplete part of the example. We return this built
     list of dictionaries
     '''
-    if task_name == "wino":
-        return zero_shot(hf_dataset, task_columns, column_names, task_name)
     # initialize list of dictionaries as empty
     hf_examples = []
 
@@ -118,24 +117,27 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
                 example += "{}:{}\n".format('Answer', hf_dataset[random_index][get_label_name(task_name)])
         
         # buggy arc case
-        if task_name == "arc":
-            example += "{}: {}\n".format('Question', hf_dataset[i]['question'])
-            example += "{}: {}\n".format('0', hf_dataset[i]['choices']['text'][0])
-            example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
-            example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
-            example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
-            example += "{}\n".format(get_prompt(task_name))
-            example += "{}:".format('Answer')
-            hf_examples.append({'prompt': example, 'label': hf_dataset[i][get_label_name(task_name)]})
+        # if task_name == "arc":
+        #     example += "{}: {}\n".format('Question', hf_dataset[i]['question'])
+        #     example += "{}: {}\n".format('0', hf_dataset[i]['choices']['text'][0])
+        #     example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
+        #     example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
+        #     example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
+        #     example += "{}\n".format(get_prompt(task_name))
+        #     example += "{}:".format('Answer')
+        #     hf_examples.append({'prompt': example, 'label': hf_dataset[i][get_label_name(task_name)]})
         
         # take care of wino case
-        elif task_name == "wino":
+        if task_name == "wino":
             example += "{}: {}\n".format('Sentence', hf_dataset[i]['sentence'])
             example += "{}: {}\n".format('0', hf_dataset[i]['option1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['option2'])
             example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
-            hf_examples.append({'prompt': example, 'label': str(int(hf_dataset[i][get_label_name(task_name)])-1)})
+            if split != "test":
+                hf_examples.append({'prompt': example, 'label': str(int(hf_dataset[i][get_label_name(task_name)])-1)})
+            else:
+                hf_examples.append({'prompt': example, 'label': ''})
 
         else:  # functional piqa case
             for j, column in enumerate(task_columns[:-1]):
@@ -145,10 +147,11 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': hf_dataset[i][get_label_name(task_name)]})
         # now turn this into a dictionary and add to list
+
     return hf_examples
 
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
-    data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots)
+    data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split)
     fields = list(data[0].keys())
     csv_dir_path = "datasets/FewSoftPrompting/preprocessed/{}/{}".format(task_name, split)
     os.makedirs(csv_dir_path, exist_ok=True)
