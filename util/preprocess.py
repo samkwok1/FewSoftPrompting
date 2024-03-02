@@ -62,7 +62,7 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         else:
             for j, column in enumerate(task_columns[:-1]):
                 example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
-        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer:')
+        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer')
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
@@ -102,10 +102,10 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
 
             # generate single example using random int and the column names and values at this random int row
             else:
+                example += "Please choose the best option between the options presented above, in the form of a SINGLE number.\n"
                 for j, column in enumerate(task_columns[:-1]):
                     example += "{}: {}\n".format(column_names[j], hf_dataset[random_index][column])
             example += "{}:{}\n\n".format('Answer', hf_dataset[random_index]['label'])
-        
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
             example += "{}:{}\n".format('Activity', hf_dataset[i]['activity_label'])
@@ -119,8 +119,8 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
                 example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
         
         # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
-        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer:')
-
+        example += "{}:".format('Answer:')
+        print(example)
         # now turn this into a dictionary and add to list
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
@@ -174,7 +174,7 @@ def make_dataset(task, save):
     print(train_dataset.features["label"])
 
     # make train list, validation list which are always used
-    # train_examples = few_shot(train_dataset, task_columns, column_names, task, num_shots)
+    # train_examples = few_shot(train_dataset, task_columns, column_names, task, 2)
     # validation_examples = zero_shot(validation_dataset, task_columns, column_names, task)
     
     # do few shot for each of these and save to csv
