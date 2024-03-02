@@ -14,9 +14,9 @@ env:
 
   model_description: # what model you're training/testing
     type: "base" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
-    model_path: "meta-llama/Llama-2-7b-chat-hf" # path to the model
-    tokenizer_path: "meta-llama/Llama-2-7b-chat-hf" # path to the tokenizer
-    model_nickname: "llama7b"
+    model_path: 'mistralai/Mistral-7B-Instruct-v0.2' # path to the model
+    tokenizer_path: 'mistralai/Mistral-7B-Instruct-v0.2' # path to the tokenizer
+    model_nickname: "mistral7b"
 
   dataset: "piqa" # what dataset to train/eval/test on; piqa, siqa, or swag
   num_shots: 3 # the number of shots to use

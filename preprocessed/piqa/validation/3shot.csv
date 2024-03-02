@@ -1,5 +1,5 @@
 "prompt","label"
-"    Question: how to slice meat easier
+"   Question: how to slice meat easier
     0: place the meat in the oven and broil for 10 to 15 minutes to stiffen it up
     1: place the meat in the freezer for 10 to 15 minutes to stiffen it up
     Answer:1
@@ -14,7 +14,7 @@
     1: dress like you do not care about your surroundings.
     Answer:0
 
-    Question:How do I ready a guinea pig cage for it's new occupants?
+    Question: How do I ready a guinea pig cage for it's new occupants?
     0:Provide the guinea pig with a cage full of a few inches of bedding made of ripped paper strips, you will also need to supply it with a water bottle and a food dish.
     1:Provide the guinea pig with a cage full of a few inches of bedding made of ripped jeans material, you will also need to supply it with a water bottle and a food dish.
     Answer:",0
@@ -33,7 +33,7 @@
     1: write a question mark after the question.
     Answer:1
 
-    Question:dresser
+    Question: dresser
     0:replace drawer with bobby pin 
     1:finish, woodgrain with  bobby pin 
     Answer:",1
