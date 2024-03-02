@@ -8,7 +8,7 @@ import csv
 
 def get_num(val):
     if val.isnumeric():
-        return val
+        return str(int(val) - 1)
     else:
         return "0" if val == "A" else ("1" if val == "B" else ("2" if val == "C" else "3"))
 
@@ -17,7 +17,7 @@ def get_prompt(task):
     if task == "piqa":
         return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
     elif task == "arc":
-        return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+        return "You are a helpful AI science assistant. A grade-school student is asking for your help. Choose the option that most correctly answers the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, you must guess between the four options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
     else:  # task is wino
         return "You are a helpful AI assistant that completes sentences by filling in blanks.{}You must choose the option that best fills in the blank, meaning you must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
 
@@ -117,8 +117,6 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('2', hf_dataset[random_index]['choices']['text'][2])
                 example += "{}: {}\n".format('3', hf_dataset[random_index]['choices']['text'][3])
                 example += "{}\n".format(get_prompt(task_name))
-                if hf_dataset[random_index][get_label_name(task_name)].isnumeric():
-                    print(i)
                 example += "{}:{}\n".format('Answer', get_num(hf_dataset[random_index][get_label_name(task_name)]))
             
             # taking care of wino case
