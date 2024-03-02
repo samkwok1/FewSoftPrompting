@@ -6,6 +6,15 @@ import os
 import csv
 
 
+def get_prompt(task):
+    if task == "piqa":
+        return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+        return "Choose the response that best satisfies the question. You must choose either 0 or 1. Limit your response to your numeric answer. There is exactly one correct answer."
+    elif task == "siqa":
+        return "Write 1 if option 1 is the best way to achieve the goal, write 2 if option 2 is the best, and write 3 if option 3 is the best. Limit your response to your numeric answer. There is exactly one correct answer."
+    else:  # task is swag
+        return ""
+
 
 def get_letter(task, label):
     if task == "piqa":
@@ -62,7 +71,7 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         else:
             for j, column in enumerate(task_columns[:-1]):
                 example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
-        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer')
+        example += "{}:".format('Answer')
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
@@ -104,6 +113,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
             else:
                 for j, column in enumerate(task_columns[:-1]):
                     example += "{}: {}\n".format(column_names[j], hf_dataset[random_index][column])
+            example += "{}\n".format(get_prompt(task_name))
             example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
@@ -118,11 +128,11 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
                 example += "{}: {}\n".format(column_names[j], hf_dataset[i][column])
         
         # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
+        example += "{}\n".format(get_prompt(task_name))
         example += "{}:".format('Answer')
         # now turn this into a dictionary and add to list
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
-
 
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
     data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots)
