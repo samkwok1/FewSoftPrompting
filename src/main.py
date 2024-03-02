@@ -37,8 +37,8 @@ def main(args: DictConfig) -> None:
             model_path=env.model_description.model_path,
             model_nickname=env.model_description.model_nickname,
             tokenizer_path=env.model_description.tokenizer_path,
-            dataset=eval_dataset,
-            num_eval_shots=0,
+            dataset=env.dataset,
+            num_eval_shots=env.num_eval_shots,
             save_path=model_save_path
         )
     if env.test:
