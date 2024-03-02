@@ -62,8 +62,6 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         example += "{}".format(get_prompt(task_name))
         example += "{}:\n".format('Answer')
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['answer']})
-        print(example)
-    # print(hf_examples)
     return hf_examples
 
 
