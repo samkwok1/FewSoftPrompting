@@ -9,71 +9,71 @@ import csv
 def get_prompt(task):
     if task == "piqa":
         return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
-        return "Choose the response that best satisfies the question. You must choose either 0 or 1. Limit your response to your numeric answer. There is exactly one correct answer."
-    elif task == "siqa":
-        return "Write 1 if option 1 is the best way to achieve the goal, write 2 if option 2 is the best, and write 3 if option 3 is the best. Limit your response to your numeric answer. There is exactly one correct answer."
-    else:  # task is swag
-        return ""
+    elif task == "arc":
+        return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best satisfies the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+    else:  # task is wino
+        return "You are a helpful AI assistant that is being asked a question by a user. Choose the response that best completes the question. You must choose either 1 or 2. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
 
 
-def get_letter(task, label):
+def get_label_name(task):
     if task == "piqa":
-        return '0' if label == 0 else '1'
-    elif task == "siqa":
-        return '1' if str(label) == '1' else ('2' if label == '2' else '3')
-    else:  # task is 'swag'
-        return '0' if str(label) == '0' else ('1' if label == '1' else ('2' if label == '2' else '3'))
+        return "label"
+    elif task == "arc":
+        return "answerKey"
+    else:
+        return "answer"
 
 
 def get_columns(task):
-    assert task in ['piqa', 'siqa', 'swag'], "Please ensure task is one of piqa, siqa, or swag."
+    assert task in ['piqa', 'arc', 'wino'], "Please ensure task is one of piqa, arc, or wino."
 
     if task == 'piqa':
         return ['goal', 'sol1', 'sol2', 'label'], ['Question', '0', '1', 'Answer']
-    elif task == 'siqa':
-        return ['context', 'question', 'answerA', 'answerB', 'answerC', 'label'], ['Context', 'Question', '1', '2', '3', 'Answer']
-    elif task == 'swag':
-        return ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '0', '1', '2', '3', 'Answer']
+    elif task == 'arc':  # gotta figure out arc
+        return ['id', 'question', 'choices', 'answerKey'], ['Context', 'Question', '1', '2', '3', 'Answer']
+    elif task == 'wino':
+        return ['sentence', 'option1', 'option2', 'answer'], ['Sentence', '1', '2', 'Answer']
     else:
         assert False, "get_columns did not return when it should have"
 
 
-def zero_shot(hf_dataset, task_columns, column_names, task_name):
-    '''
-    Given a hugging face dataset, this function should return a list of dictionaries where the first key
-    is 'text' and the associated value is the zero_shot example and the second key is 'label' with value
-    equal to the label for the current query (for test_datasets this will eithher be -1 or ''). Each example
-    should have the following form:
-    Prompt: prompt\n
+# def zero_shot(hf_dataset, task_columns, column_names, task_name):
+#     '''
+#       DEFUNCT
+#     Given a hugging face dataset, this function should return a list of dictionaries where the first key
+#     is 'text' and the associated value is the zero_shot example and the second key is 'label' with value
+#     equal to the label for the current query (for test_datasets this will eithher be -1 or ''). Each example
+#     should have the following form:
+#     Prompt: prompt\n
 
-        Column1: column1 text
-        Column2: column2 text
-        .
-        .
-        .
-        Column_n: column_n text
-        Label: label value
-    '''
-    hf_examples = []
-    for i in range(len(hf_dataset)):
-        # how example is always started
-        example = ""
+#         Column1: column1 text
+#         Column2: column2 text
+#         .
+#         .
+#         .
+#         Column_n: column_n text
+#         Label: label value
+#     '''
+#     hf_examples = []
+#     for i in range(len(hf_dataset)):
+#         # how example is always started
+#         example = ""
 
-        # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
-        if task_name == 'swag':
-            # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
-            example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
-        else:
-            for j, column in enumerate(task_columns[:-1]):
-                example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
-        example += "{}:".format('Answer')
-        hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
-    return hf_examples
+#         # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
+#         if task_name == 'swag':
+#             # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
+#             example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
+#             example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
+#             example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
+#             example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
+#             example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
+#             example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
+#         else:
+#             for j, column in enumerate(task_columns[:-1]):
+#                 example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
+#         example += "{}:".format('Answer')
+#         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
+#     return hf_examples
 
 
 def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
@@ -98,31 +98,26 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
         # for current example we will generate num_shots complete examples
         for _ in range(num_shots):
             random_index = random.randint(0, len(hf_dataset) - 1)
-
-            # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
-            if task_name == 'swag':
-                # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
-                example += "{}: {}\n".format('Activity', hf_dataset[random_index]['activity_label'])
-                example += "{}: {}\n".format('Context', hf_dataset[random_index]['ctx'])
-                example += "{}: {}\n".format('0', hf_dataset[random_index]['endings'][0])
-                example += "{}: {}\n".format('1', hf_dataset[random_index]['endings'][1])
-                example += "{}: {}\n".format('2', hf_dataset[random_index]['endings'][2])
-                example += "{}: {}\n".format('3', hf_dataset[random_index]['endings'][3])
-
+            if task_name == "arc":
+                example += "{}: {}\n".format('Question', hf_dataset[random_index]['question'])
+                example += "{}: {}\n".format('0', hf_dataset[random_index]['choices']['text'][0])
+                example += "{}: {}\n".format('1', hf_dataset[random_index]['choices']['text'][1])
+                example += "{}: {}\n".format('2', hf_dataset[random_index]['choices']['text'][2])
+                example += "{}: {}\n".format('3', hf_dataset[random_index]['choices']['text'][3])
             # generate single example using random int and the column names and values at this random int row
             else:
                 for j, column in enumerate(task_columns[:-1]):
                     example += "{}: {}\n".format(column_names[j], hf_dataset[random_index][column])
             example += "{}\n".format(get_prompt(task_name))
-            example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
+            example += "{}:{}\n".format('Answer', hf_dataset[random_index][get_label_name(task_name)])
+        
         # after generating num_shot complete examples we will add our incomplete example
-        if task_name == 'swag':
-            example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
+        if task_name == "arc":
+            example += "{}: {}\n".format('Question', hf_dataset[i]['question'])
+            example += "{}: {}\n".format('0', hf_dataset[i]['choices']['text'][0])
+            example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
+            example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
+            example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
                 example += "{}: {}\n".format(column_names[j], hf_dataset[i][column])
@@ -131,7 +126,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
         example += "{}\n".format(get_prompt(task_name))
         example += "{}:".format('Answer')
         # now turn this into a dictionary and add to list
-        hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
+        hf_examples.append({'prompt': example, 'label': hf_dataset[i][get_label_name(task_name)]})
     return hf_examples
 
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
@@ -153,8 +148,8 @@ def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots
 def make_dataset(task, save):
     '''
     piqa: has train, dev, and test splits. for test all labels come as -1. need to test on leaderboard
-    swag: has train, dev, and test splits. for test all labels come as ''. need to test on leaderboard
-    siqa: only has train, dev splits. need to download test question and test on leaderboard.
+    wino: has train, dev, and test splits. for test all labels come as empty. need to test on leaderboard
+    arc: has train, dev, and test splits. answer key is included for test set so testing on leader_boards isn't required
     '''
     # init for purposes of defining it in conditional and being able to refer to it outside
     # test_examples = None
@@ -166,20 +161,23 @@ def make_dataset(task, save):
     
     # specify dataset name for different tasks
     dataset_name = None
-    if task == 'swag':
-        dataset_name = 'Rowan/hellaswag'
+    if task == 'wino':
+        dataset_name = 'winogrande'
     elif task == 'piqa':
         dataset_name = 'piqa'
-    elif task == 'siqa':
-        dataset_name = "social_i_qa"
+    elif task == 'arc':
+        dataset_name = "ai2_arc"
     assert dataset_name is not None, "unable to assign name to dataset for particular task: {}".format(task)
 
     # load dataset from name and make the train, validation, and test datasets
-    task_dataset = load_dataset(dataset_name)
-    train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], None
-    if task != 'siqa':
-        test_dataset = task_dataset['test']
-    print(train_dataset.features["label"])
+    if task == "wino":
+        task_dataset = load_dataset(dataset_name, "winogrande_debiased")
+    elif task == "arc":
+        task_dataset = load_dataset(dataset_name, "ARC-Challenge")
+    else:
+        task_dataset = load_dataset(dataset_name)
+    train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], task_dataset['test']
+    print(train_dataset.features[get_label_name(task)])
 
     # make train list, validation list which are always used
     # train_examples = few_shot(train_dataset, task_columns, column_names, task, 2)
@@ -190,8 +188,7 @@ def make_dataset(task, save):
         for nshots in [0, 1, 3, 5]:
             few_shot_to_csv(train_dataset, task_columns, column_names, task, nshots, "train")
             few_shot_to_csv(validation_dataset, task_columns, column_names, task, nshots, "validation")
-        if task != 'siqa':
-            few_shot_to_csv(test_dataset, task_columns, column_names, task, 0, "test")
+        few_shot_to_csv(test_dataset, task_columns, column_names, task, 0, "test")
 
     # # always convert train and validation list into hf dataset and initialize our dsd with those
     # hf_train = Dataset.from_list(train_examples)
@@ -231,19 +228,18 @@ def make_dataset(task, save):
 
 def main():
     '''
-        args should have the form: python hf_data_scripts.py {piqa, siqa, swag} save num_shots do_eval
+        args should have the form: python hf_data_scripts.py {piqa, arc, wino} save
     '''
     # arg handling
     args = sys.argv[1:]
 
     task = args[0]
-    assert task == 'piqa' or task == 'siqa' or task == 'swag', "Please ensure task is one of \{piqa, siqa, swag\}"
+    assert task == 'piqa' or task == 'arc' or task == 'wino', "Please ensure task is one of \{piqa, arc, wino\}"
     save = args[1].lower()
     assert save == 'true' or save == 'false', "save should be either true or false"
     save = True if save == 'true' else False
 
 
-    # create hf dict dataset with train, validate, test splits for piqa and swag and train, validate splits for siqa
     make_dataset(task, save)
 
 if __name__ == "__main__":
