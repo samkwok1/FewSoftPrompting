@@ -53,16 +53,16 @@ def zero_shot(hf_dataset, task_columns, column_names, task_name):
         # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
         if task_name == 'swag':
             # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
-            example += "    {}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "    {}: {}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "    {}: {}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "    {}: {}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "    {}: {}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "    {}: {}\n".format('3', hf_dataset[i]['endings'][3])
+            example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
+            example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
+            example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
-                example += "    {}:{}\n".format(column_names[j], hf_dataset[i][column])
-        example += "    {}:".format('Answer')
+                example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
+        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer:')
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
 
@@ -93,33 +93,33 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
             # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
             if task_name == 'swag':
                 # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
-                example += "    {}: {}\n".format('Activity', hf_dataset[random_index]['activity_label'])
-                example += "    {}: {}\n".format('Context', hf_dataset[random_index]['ctx'])
-                example += "    {}: {}\n".format('0', hf_dataset[random_index]['endings'][0])
-                example += "    {}: {}\n".format('1', hf_dataset[random_index]['endings'][1])
-                example += "    {}: {}\n".format('2', hf_dataset[random_index]['endings'][2])
-                example += "    {}: {}\n".format('3', hf_dataset[random_index]['endings'][3])
+                example += "{}: {}\n".format('Activity', hf_dataset[random_index]['activity_label'])
+                example += "{}: {}\n".format('Context', hf_dataset[random_index]['ctx'])
+                example += "{}: {}\n".format('0', hf_dataset[random_index]['endings'][0])
+                example += "{}: {}\n".format('1', hf_dataset[random_index]['endings'][1])
+                example += "{}: {}\n".format('2', hf_dataset[random_index]['endings'][2])
+                example += "{}: {}\n".format('3', hf_dataset[random_index]['endings'][3])
 
             # generate single example using random int and the column names and values at this random int row
             else:
                 for j, column in enumerate(task_columns[:-1]):
-                    example += "    {}: {}\n".format(column_names[j], hf_dataset[random_index][column])
-            example += "    {}:{}\n\n".format('Answer', hf_dataset[random_index]['label'])
+                    example += "{}: {}\n".format(column_names[j], hf_dataset[random_index][column])
+            example += "{}:{}\n\n".format('Answer', hf_dataset[random_index]['label'])
         
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
-            example += "    {}:{}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "    {}:{}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "    {}:{}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "    {}:{}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "    {}:{}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "    {}:{}\n".format('3', hf_dataset[i]['endings'][3])
+            example += "{}:{}\n".format('Activity', hf_dataset[i]['activity_label'])
+            example += "{}:{}\n".format('Context', hf_dataset[i]['ctx'])
+            example += "{}:{}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "{}:{}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "{}:{}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "{}:{}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
-                example += "    {}:{}\n".format(column_names[j], hf_dataset[i][column])
+                example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
         
         # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
-        example += "    {}:".format('Answer')
+        example += "{}:".format('Please choose the best option between the options presented above, in the form of a SINGLE number. Answer:')
 
         # now turn this into a dictionary and add to list
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
@@ -129,8 +129,9 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
     data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots)
     fields = list(data[0].keys())
-    csv_file = "./preprocessed/{}/{}/{}-shot.csv".format(task_name, split, num_shots)
-    with open(csv_file, mode='w', newline='') as file:
+    csv_dir_path = "datasets/FewSoftPrompting/preprocessed/{}/{}".format(task_name, split)
+    os.makedirs(csv_dir_path, exist_ok=True)
+    with open(f"{csv_dir_path}/{num_shots}shot.csv", mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=fields, quoting=csv.QUOTE_NONNUMERIC)
         
         # Write the header
@@ -139,10 +140,9 @@ def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots
         # Write the data
         for row in data:
             writer.writerow(row)
-    return data, csv_file
 
 
-def make_dataset(task, save, num_shots, do_eval):
+def make_dataset(task, save):
     '''
     piqa: has train, dev, and test splits. for test all labels come as -1. need to test on leaderboard
     swag: has train, dev, and test splits. for test all labels come as ''. need to test on leaderboard
@@ -233,14 +233,10 @@ def main():
     save = args[1].lower()
     assert save == 'true' or save == 'false', "save should be either true or false"
     save = True if save == 'true' else False
-    num_shots = int(args[2])
-    do_eval = args[3].lower()
-    assert do_eval == 'true' or do_eval == 'false', "save should be either true or false"
-    do_eval = True if do_eval == 'true' else False
 
 
     # create hf dict dataset with train, validate, test splits for piqa and swag and train, validate splits for siqa
-    make_dataset(task, save, num_shots, do_eval)
+    make_dataset(task, save)
 
 if __name__ == "__main__":
     main()
