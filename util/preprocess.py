@@ -37,43 +37,33 @@ def get_columns(task):
         assert False, "get_columns did not return when it should have"
 
 
-# def zero_shot(hf_dataset, task_columns, column_names, task_name):
-#     '''
-#       DEFUNCT
-#     Given a hugging face dataset, this function should return a list of dictionaries where the first key
-#     is 'text' and the associated value is the zero_shot example and the second key is 'label' with value
-#     equal to the label for the current query (for test_datasets this will eithher be -1 or ''). Each example
-#     should have the following form:
-#     Prompt: prompt\n
+def zero_shot(hf_dataset, task_columns, column_names, task_name):
+    '''
+    Given a hugging face dataset, this function should return a list of dictionaries where the first key
+    is 'text' and the associated value is the zero_shot example and the second key is 'label' with value
+    equal to the label for the current query (for test_datasets this will eithher be -1 or ''). Each example
+    should have the following form:
+    Prompt: prompt\n
 
-#         Column1: column1 text
-#         Column2: column2 text
-#         .
-#         .
-#         .
-#         Column_n: column_n text
-#         Label: label value
-#     '''
-#     hf_examples = []
-#     for i in range(len(hf_dataset)):
-#         # how example is always started
-#         example = ""
-
-#         # either task is piqa/siqa or task is swag...swag is annoying because it has as one column a list of strings
-#         if task_name == 'swag':
-#             # ['activity_label', 'ctx', 'endings', 'label'], ['Activity', 'Context', '(A)', '(B)', '(C)', '(D)', 'Answer']
-#             example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
-#             example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
-#             example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
-#             example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
-#             example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
-#             example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
-#         else:
-#             for j, column in enumerate(task_columns[:-1]):
-#                 example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
-#         example += "{}:".format('Answer')
-#         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
-#     return hf_examples
+        Column1: column1 text
+        Column2: column2 text
+        .
+        .
+        .
+        Column_n: column_n text
+        Label: label value
+    '''
+    hf_examples = []
+    for i in range(len(hf_dataset)):
+        # how example is always started
+        example = ""
+        for j, column in enumerate(task_columns[:-1]):
+            example += "{}: {}\n".format(column_names[j], hf_dataset[i][column])
+        example += "{}:".format('Answer')
+        hf_examples.append({'prompt': example, 'label': hf_dataset[i]['answer']})
+        print(example)
+    print(hf_examples)
+    return hf_examples
 
 
 def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
@@ -87,6 +77,8 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
     associated value being the true label for the incomplete part of the example. We return this built
     list of dictionaries
     '''
+    if task_name == "wino":
+        return zero_shot(hf_dataset, task_columns, column_names, task_name)
     # initialize list of dictionaries as empty
     hf_examples = []
 
