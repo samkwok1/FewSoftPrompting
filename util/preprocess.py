@@ -102,25 +102,23 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots):
 
             # generate single example using random int and the column names and values at this random int row
             else:
-                example += "Please choose the best option between the options presented above, in the form of a SINGLE number.\n"
                 for j, column in enumerate(task_columns[:-1]):
                     example += "{}: {}\n".format(column_names[j], hf_dataset[random_index][column])
-            example += "{}:{}\n\n".format('Answer', hf_dataset[random_index]['label'])
+            example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
         # after generating num_shot complete examples we will add our incomplete example
         if task_name == 'swag':
-            example += "{}:{}\n".format('Activity', hf_dataset[i]['activity_label'])
-            example += "{}:{}\n".format('Context', hf_dataset[i]['ctx'])
-            example += "{}:{}\n".format('0', hf_dataset[i]['endings'][0])
-            example += "{}:{}\n".format('1', hf_dataset[i]['endings'][1])
-            example += "{}:{}\n".format('2', hf_dataset[i]['endings'][2])
-            example += "{}:{}\n".format('3', hf_dataset[i]['endings'][3])
+            example += "{}: {}\n".format('Activity', hf_dataset[i]['activity_label'])
+            example += "{}: {}\n".format('Context', hf_dataset[i]['ctx'])
+            example += "{}: {}\n".format('0', hf_dataset[i]['endings'][0])
+            example += "{}: {}\n".format('1', hf_dataset[i]['endings'][1])
+            example += "{}: {}\n".format('2', hf_dataset[i]['endings'][2])
+            example += "{}: {}\n".format('3', hf_dataset[i]['endings'][3])
         else:
             for j, column in enumerate(task_columns[:-1]):
-                example += "{}:{}\n".format(column_names[j], hf_dataset[i][column])
+                example += "{}: {}\n".format(column_names[j], hf_dataset[i][column])
         
         # now example is n_shot complete examples and an incomplete examples. Now we just need the space for answer:
-        example += "{}:".format('Answer:')
-        print(example)
+        example += "{}:".format('Answer')
         # now turn this into a dictionary and add to list
         hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
     return hf_examples
