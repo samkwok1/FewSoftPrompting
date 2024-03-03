@@ -18,9 +18,9 @@ env:
     tokenizer_path: 'mistralai/Mistral-7B-Instruct-v0.2' # path to the tokenizer
     model_nickname: "mistral7b"
 
-  dataset: "piqa" # what dataset to train/eval/test on; piqa, siqa, or swag
+  dataset: "arc" # what dataset to train/eval/test on; piqa, siqa, or swag
   num_shots: 3 # the number of shots to use during training
-  num_eval_shots: 0 # the number of eval shots to use
+  num_eval_shots: 3 # the number of eval shots to use
 
   training_params:
     num_virtual_tokens: 20

@@ -22,8 +22,6 @@ def train(model_path, model_nickname, tokenizer_path, dataset, training_params, 
 
     print("Init dataset")
 
-    dataset
-
     num_virtual_tokens = training_params.num_virtual_tokens
     print("Init PEFT")
     peft_config = PromptTuningConfig(

@@ -10,6 +10,25 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 
 HUGGING_FACE = True
 
+def find_output_labels(output_path):
+    file = open('outputs.txt', 'r')
+    lines = file.readlines()
+    flag = False
+    counter = 0
+    outputs = []
+    for line in lines:
+        if flag == True:
+            if counter == 8:
+                flag = False
+                label = 0 if '0' in line else 1
+                outputs.append(label)
+
+        if line.startswith('[INST'):
+            counter = 0
+            flag = True
+        counter += 1
+    return outputs
+
 def turn_csv_to_messages_dict(path):
     # only for validation set
     #messages_dict will have this structure:
@@ -74,6 +93,7 @@ def compute_stats(model_path, model_nickname, tokenizer_path, dataset, num_eval_
         eval_list = messages_dict[str(num_eval_shots)]
         for elem in eval_list:
             print(elem)
+
         predictions = []
         for i in tqdm(range(len(eval_list))):
             message = eval_list[i]
@@ -87,14 +107,30 @@ def compute_stats(model_path, model_nickname, tokenizer_path, dataset, num_eval_
             for pred in predictions1:
                 print(pred)
             print()
-        predictions = [0 if '0' in prediction[prediction.find("Answer:"):] else 1 for prediction in predictions]
+
+        preds = []
+        for prediction in predictions:
+            prediction = prediction.split("Answer:")
+            prediction = prediction[-1]
+            if '0' in prediction:
+                result = 0
+            elif '1' in prediction:
+                result = 1
+            elif '2' in prediction:
+                result = 2
+            elif '3' in prediction:
+                result = 3
+            preds.append(result)
+        predictions = preds
+        print(predictions)
         labels = labels_dict[str(num_eval_shots)]
         assert len(eval_list) == len(labels)
         assert len(predictions) == len(labels)
+
         accuracy = accuracy_score(labels, predictions)
-        precision = precision_score(labels, predictions, average='binary')
-        recall = recall_score(labels, predictions, average='binary')
-        f1 = f1_score(labels, predictions, average='binary')
+        precision = precision_score(labels, predictions, average='macro')
+        recall = recall_score(labels, predictions, average='macro')
+        f1 = f1_score(labels, predictions, average='macro')
         print(f"Accuracy: {accuracy}")
         print(f"Precision: {precision}")
         print(f"Recall: {recall}")
