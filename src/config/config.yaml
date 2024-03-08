@@ -7,16 +7,16 @@ sim:
   sim_id: "" # the iteration of results
 
 env:
-  train: false # bool, whether you're training a soft-prompt or not
+  train: true # bool, whether you're training a soft-prompt or not
   fine_tune: false # bool, whether you're fine-tuning a model or not
-  eval: true # eval, whether you're evaluating a model or not
+  eval: false # eval, whether you're evaluating a model or not
   test: false # bool, whether you're testing a model on test set
 
   model_description: # what model you're training/testing
     type: "base" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
-    model_path: 'mistralai/Mistral-7B-Instruct-v0.2' # path to the model
-    tokenizer_path: 'mistralai/Mistral-7B-Instruct-v0.2' # path to the tokenizer
-    model_nickname: "mistral7b"
+    model_path: 'openai-community/gpt2-medium' # path to the model
+    tokenizer_path: 'openai-community/gpt2-medium' # path to the tokenizer
+    model_nickname: "gpt2medium"
 
   dataset: "arc" # what dataset to train/eval/test on; piqa, siqa, or swag
   num_shots: 3 # the number of shots to use during training

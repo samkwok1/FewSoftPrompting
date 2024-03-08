@@ -19,14 +19,14 @@ def csv_to_hf(num_shots, task) -> DatasetDict:
 
     In simple words: why do we need n-shot validate at any time other than evaluating on one of our particular baselines?
     """
-    path = f"~/research_projects/FewSoftPrompting/data/processed/{task}/{num_shots}shot"
+    path = f"~/research_projects/FewSoftPrompting/data/{task}"
     if task != "siqa":
-        splits = ["train", "test", "valid"]
+        splits = ["train", "validation"]
     else:
         splits = ["train", "valid"]
     dsd = DatasetDict()
     for elem in splits:
-        dataset = pd.read_csv(f"{path}/{elem}.csv")
+        dataset = pd.read_csv(f"{path}/{elem}/{num_shots}shot.csv")
         dsd[elem] = Dataset.from_pandas(dataset)
     return dsd
 
@@ -42,23 +42,23 @@ def init_dataset(num_shots, task, tokenizer):
                                     desc=f"Running Tokenizer on {split} Dataset")
                         for split, subset in dataset.items()}
     tokenized_dataset = DatasetDict(tokenized_dataset)
-    tokenized_dataset.save_to_disk(f'datasets/FewSoftPrompting/{task}/{num_shots}shot')
+    tokenized_dataset.save_to_disk(f'datasets/FewSoftPrompting/hf/{task}/{num_shots}shot')
 
 
 def main():
     args = sys.argv[1:]
 
     task = args[0]
-    assert task == 'piqa' or task == 'siqa' or task == 'swag', "Please ensure task is one of \{piqa, siqa, swag\}"
+    assert task == 'piqa' or task == 'siqa' or task == 'arc', "Please ensure task is one of \{piqa, siqa, swag\}"
     num_shots = int(args[1])
 
     print("Initializing dataset")
-    tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-chat-hf", token="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")
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-Instruct-v0.2", token="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")
 
     model = AutoModelForCausalLM.from_pretrained(
-        pretrained_model_name_or_path="meta-llama/Llama-2-7b-chat-hf",
+        pretrained_model_name_or_path="mistralai/Mistral-7B-Instruct-v0.2",
         device_map='auto',
-        cache_dir = f"./llama7b",
+        cache_dir = f"./mistral7b",
         token="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"
     )
 

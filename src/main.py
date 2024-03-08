@@ -1,7 +1,7 @@
 import hydra
 from omegaconf import DictConfig
 import os
-from train import train
+from train import train, train_lora
 from evaluate import compute_stats
 from datasets import load_from_disk
 
@@ -13,16 +13,14 @@ def main(args: DictConfig) -> None:
     model_save_path = f"models/{env.model_description.type}/{env.num_shots}"
 
     print("Initializing dataset")
-    # dataset = load_from_disk(f'datasets/FewSoftPrompting/{env.dataset}/{env.num_shots}shot')
-    # hf_train_dataset = dataset["train"]
+    dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/{env.num_shots}shot')
+    hf_train_dataset = dataset["train"]
     # hf_eval_dataset = dataset["valid"] if env.dataset != "siqa" else dataset["test"]
     # hf_test_dataset = dataset["test"] if env.dataset != "siqa" else dataset["valid"]
-    hf_train_dataset = None
-    eval_dataset = None
     
 
     if env.train:
-        train(
+        train_lora(
             model_path=env.model_description.model_path,
             model_nickname=env.model_description.model_nickname,
             tokenizer_path=env.model_description.tokenizer_path,
