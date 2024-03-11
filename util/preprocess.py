@@ -91,7 +91,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('Goal', hf_dataset[random_index]['goal'])
                 example += "{}: {}\n".format('0', hf_dataset[random_index]['sol1'])
                 example += "{}: {}\n".format('1', hf_dataset[random_index]['sol2'])
-                example += "{}\n".format(get_prompt("piqa"))
+                # example += "{}\n".format(get_prompt("piqa"))
                 example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
         
         # arc case
