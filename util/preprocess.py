@@ -131,7 +131,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
     data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split)
     fields = list(data[0].keys())
-    csv_dir_path = "datasets/FewSoftPrompting/preprocessed/{}/{}".format(task_name, split)
+    csv_dir_path = "data/{}/{}".format(task_name, split)
     os.makedirs(csv_dir_path, exist_ok=True)
     with open(f"{csv_dir_path}/{num_shots}shot.csv", mode='w', newline='') as file:
         writer = csv.DictWriter(file, fieldnames=fields, quoting=csv.QUOTE_NONNUMERIC)
