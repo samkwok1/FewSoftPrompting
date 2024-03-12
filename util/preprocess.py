@@ -166,7 +166,8 @@ def make_dataset(task, save):
     if task == "wino":
         task_dataset = load_dataset(dataset_name, "winogrande_debiased")
     elif task == "arc":
-        task_dataset = load_dataset(dataset_name, "ARC-Challenge")
+        # task_dataset = load_dataset(dataset_name, "ARC-Challenge")
+        task_dataset = load_dataset(dataset_name, "ARC-Easy")
     else:
         task_dataset = load_dataset(dataset_name)
     train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], task_dataset['test']
