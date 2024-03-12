@@ -15,27 +15,27 @@ def get_num(val):
 def get_prompt(task):
     if task == "piqa":
         return "You are a helpful AI assistant that is given a goal by a user. Choose the option that best completes the goal. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
-    elif task == "arc":
-        return "You are a helpful AI science assistant. A grade-school student is asking for your help. Choose the option that most correctly answers the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, you must guess between the four options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
-    else:  # task is wino
+    elif task == "wino":
         return "You are a helpful AI assistant that completes sentences by filling in blanks. You must choose the option that best replaces the _ character, meaning you must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+    else:  # task is arc-e or arc-c
+        return "You are a helpful AI science assistant. A grade-school student is asking for your help. Choose the option that most correctly answers the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, you must guess between the four options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
 
 
 def get_label_name(task):
     if task == "piqa":
         return "label"
-    elif task == "arc":
-        return "answerKey"
-    else:
+    elif task == "wino":
         return "answer"
+    else:
+        return "answerKey"
 
 
 def get_columns(task):
-    assert task in ['piqa', 'arc', 'wino'], "Please ensure task is one of piqa, arc, or wino."
+    assert task in ['piqa', 'arc_e', 'arc_c', 'wino'], "Please ensure task is one of piqa, arc_c, arc_e, or wino."
 
     if task == 'piqa':
         return ['goal', 'sol1', 'sol2', 'label'], ['Question', '0', '1', 'Answer']
-    elif task == 'arc':  # gotta figure out arc
+    elif task == 'arc_e' or task == "arc_c":  # gotta figure out arc
         return ['id', 'question', 'choices', 'answerKey'], ['Context', 'Question', '1', '2', '3', 'Answer']
     elif task == 'wino':
         return ['sentence', 'option1', 'option2', 'answer'], ['Sentence', '0', '1', 'Answer']
@@ -59,7 +59,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
 
     # for every training example construct an n shot example
     for i in range(len(hf_dataset)):
-        if task_name == "arc" and len(hf_dataset[i]['choices']['text']) != 4:
+        if (task_name == "arc_e" or task_name == "arc_c") and len(hf_dataset[i]['choices']['text']) != 4:
             continue
         example = ""
         for _ in range(num_shots):
@@ -67,7 +67,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             random_index = random.randint(0, len(hf_dataset) - 1)
 
             # taking care of arc case
-            if task_name == "arc":
+            if task_name == "arc_c" or task_name == "arc_e":
                 while len(hf_dataset[random_index]['choices']['text']) != 4:
                     random_index = random.randint(0, len(hf_dataset) - 1)
                 example += "{}: {}\n".format('Question', hf_dataset[random_index]['question'])
@@ -75,7 +75,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('1', hf_dataset[random_index]['choices']['text'][1])
                 example += "{}: {}\n".format('2', hf_dataset[random_index]['choices']['text'][2])
                 example += "{}: {}\n".format('3', hf_dataset[random_index]['choices']['text'][3])
-                example += "{}\n".format(get_prompt("arc"))
+                example += "{}\n".format(get_prompt(task_name))
                 example += "{}:{}\n".format('Answer', get_num(hf_dataset[random_index]['answerKey']))
             
             # taking care of wino case
@@ -95,13 +95,13 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
         
         # arc case
-        if task_name == "arc":
+        if task_name == "arc_e" or task_name == "arc_c":
             example += "{}: {}\n".format('Question', hf_dataset[i]['question'])
             example += "{}: {}\n".format('0', hf_dataset[i]['choices']['text'][0])
             example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
             example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
             example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
-            example += "{}\n".format(get_prompt('arc'))
+            example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': get_num(hf_dataset[i]['answerKey'])})
         
@@ -158,15 +158,16 @@ def make_dataset(task, save):
         dataset_name = 'winogrande'
     elif task == 'piqa':
         dataset_name = 'piqa'
-    elif task == 'arc':
+    elif task == 'arc_e' or task == 'arc_c':
         dataset_name = "ai2_arc"
     assert dataset_name is not None, "unable to assign name to dataset for particular task: {}".format(task)
 
     # load dataset from name and make the train, validation, and test datasets
     if task == "wino":
         task_dataset = load_dataset(dataset_name, "winogrande_debiased")
-    elif task == "arc":
-        # task_dataset = load_dataset(dataset_name, "ARC-Challenge")
+    elif task == "arc_c":
+        task_dataset = load_dataset(dataset_name, "ARC-Challenge")
+    elif task == "arc_e":
         task_dataset = load_dataset(dataset_name, "ARC-Easy")
     else:
         task_dataset = load_dataset(dataset_name)
@@ -190,7 +191,7 @@ def main():
     args = sys.argv[1:]
 
     task = args[0]
-    assert task == 'piqa' or task == 'arc' or task == 'wino', "Please ensure task is one of \{piqa, arc, wino\}"
+    assert task == 'piqa' or task == 'arc_c' or task == 'wino' or task == 'arc_e', "Please ensure task is one of \{piqa, arc_c, arc_e, wino\}"
     save = args[1].lower()
     assert save == 'true' or save == 'false', "save should be either true or false"
     save = True if save == 'true' else False
