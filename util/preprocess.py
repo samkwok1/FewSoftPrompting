@@ -118,7 +118,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('0', hf_dataset[i]['sol1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['sol2'])
             example += "{}:".format('Answer')
-            hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
+            hf_examples.append({'prompt': example, 'label': str(hf_dataset[i]['label'])})
 
     return hf_examples
 
