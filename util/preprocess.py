@@ -1,5 +1,5 @@
 import sys
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import random
 import os
 import csv
@@ -61,7 +61,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
     for i in range(len(hf_dataset)):
         if (task_name == "arc_e" or task_name == "arc_c") and len(hf_dataset[i]['choices']['text']) != 4:
             continue
-        example = ""
+        example = "{}\n".format(get_prompt(task_name))
         for _ in range(num_shots):
             # random index for random sampling to create few shot
             random_index = random.randint(0, len(hf_dataset) - 1)
@@ -75,7 +75,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('1', hf_dataset[random_index]['choices']['text'][1])
                 example += "{}: {}\n".format('2', hf_dataset[random_index]['choices']['text'][2])
                 example += "{}: {}\n".format('3', hf_dataset[random_index]['choices']['text'][3])
-                example += "{}\n".format(get_prompt(task_name))
+                # example += "{}\n".format(get_prompt(task_name))
                 example += "{}:{}\n".format('Answer', get_num(hf_dataset[random_index]['answerKey']))
             
             # taking care of wino case
@@ -83,7 +83,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('Sentence', hf_dataset[random_index]['sentence'])
                 example += "{}: {}\n".format('0', hf_dataset[random_index]['option1'])
                 example += "{}: {}\n".format('1', hf_dataset[random_index]['option2'])
-                example += "{}\n".format(get_prompt("wino"))
+                # example += "{}\n".format(get_prompt("wino"))
                 example += "{}:{}\n".format('Answer', str(int(hf_dataset[random_index]['answer'])-1))
             
             # take care of piqa case
@@ -91,7 +91,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
                 example += "{}: {}\n".format('Goal', hf_dataset[random_index]['goal'])
                 example += "{}: {}\n".format('0', hf_dataset[random_index]['sol1'])
                 example += "{}: {}\n".format('1', hf_dataset[random_index]['sol2'])
-                example += "{}\n".format(get_prompt("piqa"))
+                # example += "{}\n".format(get_prompt("piqa"))
                 example += "{}:{}\n".format('Answer', hf_dataset[random_index]['label'])
         
         # arc case
@@ -101,7 +101,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
             example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
             example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
-            example += "{}\n".format(get_prompt(task_name))
+            # example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': get_num(hf_dataset[i]['answerKey'])})
         
@@ -110,7 +110,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('Sentence', hf_dataset[i]['sentence'])
             example += "{}: {}\n".format('0', hf_dataset[i]['option1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['option2'])
-            example += "{}\n".format(get_prompt("wino"))
+            # example += "{}\n".format(get_prompt("wino"))
             example += "{}:".format('Answer')
             if split != "test":
                 hf_examples.append({'prompt': example, 'label': str(int(hf_dataset[i]['answer'])-1)})
@@ -122,11 +122,64 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('Goal', hf_dataset[i]['goal'])
             example += "{}: {}\n".format('0', hf_dataset[i]['sol1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['sol2'])
-            example += "{}\n".format(get_prompt('piqa'))
+            # example += "{}\n".format(get_prompt('piqa'))
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': hf_dataset[i]['label']})
 
     return hf_examples
+
+
+def split_train(hf_train, task, split_p):
+    '''
+    Function takes in a hugging face Dataset of training examples and returns
+    two hugging face datasets: the first being the train_train_split which is
+    a hugging face Dataset of size (len(hf_train) * split_p) with the first
+    len(hf_train)/(num_labels) examples removed and put into train_eval_split.
+
+    arc-c:
+    {'A': 233, 'B': 293, 'D': 283, 'C': 287, '2': 3, '4': 10, '1': 6, '3': 4}
+    {'ABCD': 1094, '1234': 23, 'ABC': 1, 'ABCDE': 1}
+
+    arc-e:
+    {'B': 566, 'D': 513, 'A': 523, '3': 33, 'C': 545, '1': 25, '2': 22, '4': 22, 'E': 2}
+    {'ABCD': 2140, '1234': 101, 'ABC': 5, '123': 1, 'ABCDE': 4}
+    '''
+    # train_train_split, train_eval_split = split_train(train_dataset, split_prop)
+
+    # piqa has two labels ... {0, 1}. wino has two labels ... {'1', '2'}
+    if task == "piqa" or task == "wino":
+        num_total = len(hf_train)
+        num_labels = 2
+
+        # this is how many zeroes and ones we ultimately want to have in the train_eval
+        num_zeroes = round((num_total / num_labels) * (1 - split_p))
+        num_ones = round((num_total / num_labels) * (1 - split_p))
+
+        # want to grab the first 20%
+        train_train = []
+        train_eval = []
+        for example in hf_train:
+            # if label is 0 and we still have more zeroes to add then we add it to train_train
+            if (example[get_label_name(task)] == 0 or example[get_label_name(task)] == '1') and num_zeroes != 0:
+                train_eval.append(example)
+                num_zeroes -= 1
+            # if label is 1 and we still have more ones to add then we add it to train_train
+            elif (example[get_label_name(task)] == 1 or example[get_label_name(task)] == '2') and num_ones != 0:
+                train_eval.append(example)
+                num_ones -= 1
+            # otherwise we just add it to train eval
+            else:
+                train_train.append(example)
+        random.shuffle(train_train)
+        return Dataset.from_list(train_train), Dataset.from_list(train_eval)
+    
+    # arc_c has 8 labels, arc_e has 9
+    else:
+        print((8, 9))
+
+
+    return 0, 1
+
 
 def few_shot_to_csv(hf_dataset, task_columns, column_names, task_name, num_shots, split):
     data = few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split)
@@ -173,14 +226,18 @@ def make_dataset(task, save):
         task_dataset = load_dataset(dataset_name)
     train_dataset, validation_dataset, test_dataset = task_dataset['train'], task_dataset['validation'], task_dataset['test']
     print(train_dataset.features[get_label_name(task)])
-    
+
+    # create the train train and train eval splits
+    train_train_split, train_eval_split = split_train(train_dataset, task, 0.8)
+
     # do few shot for each of these and save to csv
     if save:
         for nshots in [0, 1, 3]:
         # for nshots in [0, 1, 3, 5]:
-            few_shot_to_csv(train_dataset, task_columns, column_names, task, nshots, "train")
+            few_shot_to_csv(train_train_split, task_columns, column_names, task, nshots, "train_train")
             few_shot_to_csv(validation_dataset, task_columns, column_names, task, nshots, "validation")
         few_shot_to_csv(test_dataset, task_columns, column_names, task, 0, "test")
+        few_shot_to_csv(train_eval_split, task_columns, column_names, task, 0, "train_eval")
 
 
 def main():
