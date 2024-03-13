@@ -7,23 +7,22 @@ sim:
   sim_id: "" # the iteration of results
 
 env:
-  train: true # bool, whether you're training a soft-prompt or not
+  train: false # bool, whether you're training a soft-prompt or not
   fine_tune: false # bool, whether you're fine-tuning a model or not
-  eval: false # eval, whether you're evaluating a model or not
+  eval: true # eval, whether you're evaluating a model or not
   test: false # bool, whether you're testing a model on test set
 
   model_description: # what model you're training/testing
-    type: "base" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
+    type: "soft_prompted" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
     model_path: 'openai-community/gpt2-medium' # path to the model
     tokenizer_path: 'openai-community/gpt2-medium' # path to the tokenizer
     model_nickname: "gpt2medium"
 
-  dataset: "arc" # what dataset to train/eval/test on; piqa, siqa, or swag
-  num_shots: 3 # the number of shots to use during training
-  num_eval_shots: 3 # the number of eval shots to use
+  dataset: "arc" # what dataset to train/eval/test on; wino, siqa, or arc
+  num_shots: 1 # the number of shots to use during training
+  num_eval_shots: 0 # the number of eval shots to use
 
   training_params:
-    num_virtual_tokens: 20
     num_epochs: 8
     learning_rate: 0.0035
 

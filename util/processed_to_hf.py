@@ -33,7 +33,7 @@ def init_dataset(shots, task, tokenizer):
             splits = ["train", "validation", "test"]
         else:
             splits = ["train", "validation"]
-
+        tokenizer.padding_side = 'left'
         dataset = csv_to_hf(splits, shot, task)
         tokenized_dataset = {split: subset.map(
                                         lambda examples: tokenizer(examples["prompt"], padding=True, return_tensors='pt', truncation=True, max_length=1024),
@@ -65,6 +65,7 @@ def main():
     tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
     model.resize_token_embeddings(len(tokenizer))
+    tokenizer.padding_side = 'left'
     shots = [0, 1, 3]
     init_dataset(shots, task, tokenizer)
 

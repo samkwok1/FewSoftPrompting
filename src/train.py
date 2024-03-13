@@ -1,7 +1,14 @@
-from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorForLanguageModeling
+from transformers import AutoModelForCausalLM, AutoTokenizer, TrainingArguments, Trainer, DataCollatorForLanguageModeling, AutoModelForSequenceClassification
 from peft import get_peft_config, get_peft_model, PromptTuningInit, PromptTuningConfig, TaskType, PeftType, LoraConfig
+from huggingface_hub import notebook_login
 import torch
 
+
+PROMPT_DICT = {
+    "piqa": "You are a helpful AI assistant that is given a goal by a user. Choose the option that best completes the goal. You must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer.",
+    "wino": "You are a helpful AI assistant that completes sentences by filling in blanks. You must choose the option that best replaces the _ character, meaning you must choose either 0 or 1. If you are unsure, or if the question and/or options are ambiguous, you must guess between the two options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer.",
+    "arc": "You are a helpful AI science assistant. A grade-school student is asking for your help. Choose the option that most correctly answers the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, you must guess between the four options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
+}
 def train_lora(model_path, model_nickname, tokenizer_path, train_dataset, eval_dataset, training_params, save_path):
     peft_config = LoraConfig(
         r=16,
@@ -50,17 +57,16 @@ def train_lora(model_path, model_nickname, tokenizer_path, train_dataset, eval_d
     trainer.train()
     trainer.save_model(save_path)
 
-def train(model_path, model_nickname, tokenizer_path, dataset, training_params, save_path):
+def train_soft_prompt(model_path, model_nickname, tokenizer_path, dataset, dataset_name, num_shots, training_params, save_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    assert device == "cuda"
+    print(device)
 
     print("Init model and tokenizer")
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="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")
     tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
-    #  model.resize_token_embeddings(len(tokenizer))
 
-    LLM_model = AutoModelForCausalLM.from_pretrained(
+    LLM_model = AutoModelForSequenceClassification.from_pretrained(
         pretrained_model_name_or_path=model_path,
         device_map='auto',
         cache_dir = f"./{model_nickname}",
@@ -68,17 +74,21 @@ def train(model_path, model_nickname, tokenizer_path, dataset, training_params, 
     )
     print(LLM_model.config)
 
+    LLM_model.resize_token_embeddings(len(tokenizer))
     print("Init dataset")
+    dataset_dict = dataset.train_test_split(test_size=0.3)
+    train_dataset, eval_dataset = dataset_dict["train"], dataset_dict["test"]
 
-    num_virtual_tokens = training_params.num_virtual_tokens
     print("Init PEFT")
     peft_config = PromptTuningConfig(
         task_type=TaskType.CAUSAL_LM,
-        prompt_tuning_init=PromptTuningInit.RANDOM,
-        num_virtual_tokens=num_virtual_tokens,
+        prompt_tuning_init=PromptTuningInit.TEXT,
+        num_virtual_tokens=len(tokenizer(PROMPT_DICT["arc"])["input_ids"]),
+        prompt_tuning_init_text=PROMPT_DICT["arc"],
         tokenizer_name_or_path=tokenizer_path
     )
     PEFT_model = get_peft_model(model=LLM_model, peft_config=peft_config)
+    PEFT_model.resize_token_embeddings(len(tokenizer))
     PEFT_model.print_trainable_parameters()
 
 
@@ -95,8 +105,12 @@ def train(model_path, model_nickname, tokenizer_path, dataset, training_params, 
     trainer = Trainer(
         model=PEFT_model,
         args=training_args,
-        train_dataset=dataset["train"],
-        data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False)
+        train_dataset=train_dataset,
+        eval_dataset=eval_dataset,
+        data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False),
+        tokenizer=tokenizer
     )
     trainer.train()
-    trainer.model.save_pretrained(save_path)
+    account = "skwoks"
+    peft_model_id = f"{account}/{model_nickname}-{dataset_name}-seq-{num_shots}shot"
+    PEFT_model.push_to_hub(peft_model_id)
