@@ -61,7 +61,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
     for i in range(len(hf_dataset)):
         if (task_name == "arc_e" or task_name == "arc_c"):
             assert len(hf_dataset[i]['choices']['text']) == 4
-        example = "{}\n".format(get_prompt(task_name))
+        example = ""
         for _ in range(num_shots):
             # random index for random sampling to create few shot
             random_index = random.randint(0, len(hf_dataset) - 1)
@@ -98,6 +98,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('1', hf_dataset[i]['choices']['text'][1])
             example += "{}: {}\n".format('2', hf_dataset[i]['choices']['text'][2])
             example += "{}: {}\n".format('3', hf_dataset[i]['choices']['text'][3])
+            example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': get_num(hf_dataset[i]['answerKey'])})
         
@@ -106,6 +107,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('Sentence', hf_dataset[i]['sentence'])
             example += "{}: {}\n".format('0', hf_dataset[i]['option1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['option2'])
+            example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
             if split != "test":
                 hf_examples.append({'prompt': example, 'label': str(int(hf_dataset[i]['answer'])-1)})
@@ -117,6 +119,7 @@ def few_shot(hf_dataset, task_columns, column_names, task_name, num_shots, split
             example += "{}: {}\n".format('Goal', hf_dataset[i]['goal'])
             example += "{}: {}\n".format('0', hf_dataset[i]['sol1'])
             example += "{}: {}\n".format('1', hf_dataset[i]['sol2'])
+            example += "{}\n".format(get_prompt(task_name))
             example += "{}:".format('Answer')
             hf_examples.append({'prompt': example, 'label': str(hf_dataset[i]['label'])})
 
