@@ -75,6 +75,14 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
     
         for key, value in num_same.items():
             print(f"Percentage of similar values when previous label is {key}: {value / num_total[key]}")
+
+    precision = precision_score(new_y, new_yhat, average='macro')
+    recall = recall_score(new_y, new_yhat, average='macro')
+    f1 = f1_score(new_y, new_yhat, average='macro')
+    print(f"Accuracy: {accuracy}")
+    print(f"Precision: {precision}")
+    print(f"Recall: {recall}")
+    print(f"F1 Score: {f1}")
     
     
 def get_labels(dataset_name, num_eval_shots):
