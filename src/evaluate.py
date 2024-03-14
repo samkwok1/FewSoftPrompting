@@ -61,9 +61,7 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
             new_yhat.append(pred)
             new_y.append(y[i])
 
-    y_hat = new_yhat
-    y = new_y
-    new_length = len(y)
+    new_length = len(new_y)
     print(f"Incorrect Generations: {(old_length - new_length) / old_length}")
 
     num_same = {y: 0 for y in ys}
@@ -92,9 +90,9 @@ def eval_pipeline(dataset, model_path, tokenizer_path, task='text-generation'):
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
     pipe = pipeline(model=model_path, tokenizer=tokenizer, task=task, device_map='auto')
-    set_seed(42)
+    set_seed(41)
     outputs = []
-    for i, out in enumerate(tqdm(pipe(KeyDataset(dataset, "prompt"), batch_size=16, truncation=True, repetition_penalty=0.5, temperature=0.1, max_new_tokens=2))):
+    for i, out in enumerate(tqdm(pipe(KeyDataset(dataset, "prompt"), batch_size=32, truncation=True, repetition_penalty=1, temperature=0.8, max_new_tokens=2, do_sample=False))):
         outputs.append(out[0])
     return outputs
 
@@ -134,6 +132,7 @@ def evaluate(model_path, model_nickname, tokenizer_path, num_shots, dataset, dat
                     attention_mask=attention_mask,
                     max_new_tokens=2,
                     repetition_penalty=0.5,
+                    temperature=0.5
                 )
                 y_hat.extend(tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True))
                 del input_ids

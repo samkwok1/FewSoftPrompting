@@ -14,11 +14,13 @@ def main(args: DictConfig) -> None:
 
     print("Initializing dataset")
     if env.num_shots != env.num_eval_shots:
-        hf_train_dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/{env.num_shots}shot')["train"]
+        hf_train_train_dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/{env.num_shots}shot')["train_train"]
+        hf_train_eval_dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/0shot')["train_eval"]
         hf_eval_dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/{env.num_eval_shots}shot')["validation"]
     else:
         dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/{env.num_shots}shot')
-        hf_train_dataset = dataset["train"]
+        hf_train_train_dataset = dataset["train_train"]
+        hf_train_eval_dataset = load_from_disk(f'datasets/FewSoftPrompting/hf/{env.dataset}/0shot')["train_eval"]
         hf_eval_dataset = dataset["validation"]
 
     if env.num_shots == 0:
@@ -32,7 +34,8 @@ def main(args: DictConfig) -> None:
             model_path=env.model_description.model_path,
             model_nickname=env.model_description.model_nickname,
             tokenizer_path=env.model_description.tokenizer_path,
-            dataset=hf_train_dataset,
+            train_dataset=hf_train_train_dataset,
+            train_eval_dataset=hf_train_eval_dataset,
             dataset_name=env.dataset,
             num_shots=env.num_shots,
             training_params=env.training_params,
