@@ -31,14 +31,18 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
 
     accuracy = accuracy_score(y, y_hat)
     print(f"Accuracy: {accuracy}")
-
+    print_dict = {0: 0, 1: 0, 2: 0, 3: 0, -1: 0}
+    for elem in y_hat:
+        print_dict[elem] += 1
+    print(print_dict)
+    print(f"Old_length: {len(y_hat)}")
     new_yhat = []
     new_y = []
     for i, pred in enumerate(y_hat):
         if pred in ys:
             new_yhat.append(pred)
             new_y.append(y[i])
-
+    print(f"New length: {len(new_yhat)}")
     new_length = len(new_y)
     print(f"Incorrect Generations: {(old_length - new_length) / old_length}")
 
@@ -59,8 +63,8 @@ def get_labels(dataset_name, num_eval_shots):
 
 
 def main():
-    dataset_name = "arc_c"
-    prediction_path = f"results/5_tokens/{dataset_name}"
+    dataset_name = "arc_e"
+    prediction_path = f"results/10_tokens/{dataset_name}"
     shots = [0, 1, 3]
     for elem in shots:
         print(f"Number of shots: {elem}")
