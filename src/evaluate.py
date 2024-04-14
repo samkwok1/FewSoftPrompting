@@ -53,14 +53,18 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
 
     accuracy = accuracy_score(y, y_hat)
     print(f"Accuracy: {accuracy}")
-
+    print_dict = {0: 0, 1: 0, 2: 0, 3: 0, -1: 0}
+    for elem in y_hat:
+        print_dict[elem] += 1
+    print(print_dict)
+    print(f"Old_length: {len(y_hat)}")
     new_yhat = []
     new_y = []
     for i, pred in enumerate(y_hat):
         if pred in ys:
             new_yhat.append(pred)
             new_y.append(y[i])
-
+    print(f"New length: {len(new_yhat)}")
     new_length = len(new_y)
     print(f"Incorrect Generations: {(old_length - new_length) / old_length}")
 
@@ -76,9 +80,10 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
         for key, value in num_same.items():
             print(f"Percentage of similar values when previous label is {key}: {value / num_total[key]}")
 
-    precision = precision_score(new_y, new_yhat, average='macro')
-    recall = recall_score(new_y, new_yhat, average='macro')
-    f1 = f1_score(new_y, new_yhat, average='macro')
+    average = "macro"
+    precision = precision_score(new_y, new_yhat, average=average)
+    recall = recall_score(new_y, new_yhat, average=average)
+    f1 = f1_score(new_y, new_yhat, average=average)
     print(f"Accuracy: {accuracy}")
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
@@ -98,9 +103,9 @@ def eval_pipeline(dataset, model_path, tokenizer_path, task='text-generation'):
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
     pipe = pipeline(model=model_path, tokenizer=tokenizer, task=task, device_map='auto')
-    set_seed(41)
+    set_seed(42)
     outputs = []
-    for i, out in enumerate(tqdm(pipe(KeyDataset(dataset, "prompt"), batch_size=32, truncation=True, repetition_penalty=1, temperature=0.8, max_new_tokens=2, do_sample=False))):
+    for i, out in enumerate(tqdm(pipe(KeyDataset(dataset, "prompt"), batch_size=32, truncation=True, max_new_tokens=2, do_sample=False))):
         outputs.append(out[0])
     return outputs
 
@@ -138,7 +143,7 @@ def evaluate(model_path, model_nickname, tokenizer_path, num_shots, dataset, dat
                 outputs = model.generate(
                     input_ids=input_ids,
                     attention_mask=attention_mask,
-                    max_new_tokens=2,
+                    max_new_tokens=20,
                     repetition_penalty=0.5,
                     temperature=0.5
                 )
