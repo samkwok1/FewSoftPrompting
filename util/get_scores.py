@@ -13,10 +13,10 @@ def process_predictions(dataset_name, num_shots, y_hat, find_idx):
     for prediction in y_hat:
         prediction = prediction.split("Answer:")
         result = -1 
-        if len(prediction[num_shots + find_idx]) == 0:
+        if len(prediction[find_idx]) == 0:
             preds.append(result)
             continue
-        prediction = prediction[num_shots + find_idx][:2]
+        prediction = prediction[find_idx][:2]
         for y in ys:
             if y in prediction:
                 result = int(y)
@@ -31,60 +31,51 @@ def eval_predictions(old_y_hat, y_hat, y, dataset_name, old_length, num_shots):
 
     accuracy = accuracy_score(y, y_hat)
     print(f"Accuracy: {accuracy}")
-
+    print_dict = {0: 0, 1: 0, 2: 0, 3: 0, -1: 0}
+    for elem in y_hat:
+        print_dict[elem] += 1
+    print(print_dict)
+    print(f"Old_length: {len(y_hat)}")
     new_yhat = []
     new_y = []
     for i, pred in enumerate(y_hat):
         if pred in ys:
             new_yhat.append(pred)
             new_y.append(y[i])
-
+    print(f"New length: {len(new_yhat)}")
     new_length = len(new_y)
     print(f"Incorrect Generations: {(old_length - new_length) / old_length}")
 
-    precision = precision_score(new_y, new_yhat, average='macro')
-    recall = recall_score(new_y, new_yhat, average='macro')
-    f1 = f1_score(new_y, new_yhat, average='macro')
+    average = "macro"
+    precision = precision_score(new_y, new_yhat, average=average)
+    recall = recall_score(new_y, new_yhat, average=average)
+    f1 = f1_score(new_y, new_yhat, average=average)
     print(f"Accuracy: {accuracy}")
     print(f"Precision: {precision}")
     print(f"Recall: {recall}")
     print(f"F1 Score: {f1}")
     
-
-
-    precision_score, recall_score, f1_score     
-
-    num_same = {y: 0 for y in ys}
-    num_total = {y: 0 for y in ys}
-    if num_shots > 0:
-        shot_label = process_predictions(dataset_name, num_shots, old_y_hat, 0)
-        for i in range(len(shot_label)):
-            if shot_label[i] == y_hat[i]:
-                num_same[shot_label[i]] += 1
-            num_total[shot_label[i]] += 1
-    
-        for key, value in num_same.items():
-            print(f"Percentage of similar values when previous label is {key}: {value / num_total[key]}")
-    
-    
 def get_labels(dataset_name, num_eval_shots):
-    path = f'data/results/{dataset_name}/validation/{num_eval_shots}shot.csv'
+    path = f'data/{dataset_name}/validation/{num_eval_shots}shot.csv'
     df = pd.read_csv(path)
     labels = df["label"]
     return labels
 
 
 def main():
-    prediction_path = "data/results/20_tokens/arc_c"
-    dataset_name = "arc_c"
+    dataset_name = "arc_e"
+    prediction_path = f"results/10_tokens/{dataset_name}"
     shots = [0, 1, 3]
     for elem in shots:
+        print(f"Number of shots: {elem}")
         labels = get_labels(dataset_name, elem)
         pred_df = pd.read_csv(f"{prediction_path}/{elem}train_0eval_soft_prompted.csv")
-        y_hat = pred_df["output"]
+        y_hat = pred_df["output"].to_list()
         old_length = len(y_hat)
         new_y_hat = process_predictions(dataset_name, elem, y_hat, 1)
-        eval_predictions(y_hat, new_y_hat, dataset_name, old_length, elem)
+        new_y_hat[-1] = 1
+        eval_predictions(y_hat, new_y_hat, labels, dataset_name, old_length, elem)
+        print()
 
 
 
