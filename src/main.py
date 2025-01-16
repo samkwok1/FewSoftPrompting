@@ -9,7 +9,7 @@ from datasets import load_from_disk
 def main(args: DictConfig) -> None:
     sim = args.sim
     env = args.env
-    ouput_save_path = f"{sim.repo_path}/outputs/{env.model_description.type}/{env.dataset}/{env.num_shots}/{sim.sim_id}"
+    ouput_save_path = f"{sim.repo_path}/graphs/{env.model_description.type}/{env.dataset}/{env.num_shots}/{sim.sim_id}"
     model_save_path = f"models/{env.model_description.type}/{env.num_shots}"
 
     print("Initializing dataset")
@@ -41,8 +41,6 @@ def main(args: DictConfig) -> None:
             training_params=env.training_params,
             save_path=model_save_path
         )
-    if env.fine_tune:
-        pass
     if env.eval:
         evaluate(
             model_path=env.model_description.model_path,
@@ -55,8 +53,6 @@ def main(args: DictConfig) -> None:
             save_path=model_save_path,
             type=env.model_description.type
         )
-    if env.test:
-        pass
 
 if __name__ == '__main__':
     main()

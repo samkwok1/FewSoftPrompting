@@ -9,8 +9,6 @@ sim:
 env:
   train: false # bool, whether you're training a soft-prompt or not
   fine_tune: false # bool, whether you're fine-tuning a model or not
-  eval: true # eval, whether you're evaluating a model or not
-  test: false # bool, whether you're testing a model on test set
 
   model_description: # what model you're training/testing
     type: "base" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
