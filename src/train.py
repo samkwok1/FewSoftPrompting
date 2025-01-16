@@ -10,60 +10,11 @@ PROMPT_DICT = {
     "arc": "You are a helpful AI science assistant. A grade-school student is asking for your help. Choose the option that most correctly answers the question. Your answer must be either 0, 1, 2, or 3. If you are unsure, you must guess between the four options. Importantly, your response must begin with and be limited to ONLY your numeric answer (one single character), or else the world will end. There is exactly one correct answer."
 }
 
-def train_lora(model_path, model_nickname, tokenizer_path, train_dataset, eval_dataset, training_params, save_path):
-    peft_config = LoraConfig(
-        r=16,
-        lora_alpha=16,
-        bias='none',
-        lora_dropout=0.05,
-        task_type="CAUSAL_LM",
-        target_modules = ['q_proj','k_proj','v_proj','o_proj','gate_proj','down_proj','up_proj','lm_head'],
-        modules_to_save=["decode_head", "score"]
-
-    )
-
-    print("Init model and tokenizer")
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="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")
-    tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
-    tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
-
-    LLM_model = AutoModelForCausalLM.from_pretrained(
-        pretrained_model_name_or_path=model_path,
-        device_map='auto',
-        cache_dir = f"./{model_nickname}",
-        token="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"
-    )
-
-    PEFT_model = get_peft_model(model=LLM_model, peft_config=peft_config)
-    PEFT_model.print_trainable_parameters()
-
-    learning_rate = training_params.learning_rate
-    num_epochs = training_params.num_epochs
-    training_args = TrainingArguments(
-        output_dir="outputs",
-        auto_find_batch_size=True,
-        learning_rate=learning_rate,
-        num_train_epochs=num_epochs,
-        evaluation_strategy='epoch',
-        label_names=["label"]
-    )
-
-    trainer = Trainer(
-        model=PEFT_model,
-        args=training_args,
-        train_dataset=dataset,
-        data_collator=DataCollatorForLanguageModeling(tokenizer, mlm=False)
-    )
-
-    trainer.train()
-    trainer.save_model(save_path)
-
 def train_soft_prompt(model_path, model_nickname, tokenizer_path, train_dataset, train_eval_dataset, dataset_name, num_shots, training_params, save_path):
     device = "cuda" if torch.cuda.is_available() else "cpu"
-    print(device)
 
     print("Init model and tokenizer")
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="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")
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="YOURHFTOKEN")
     tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
     tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
 
@@ -71,11 +22,12 @@ def train_soft_prompt(model_path, model_nickname, tokenizer_path, train_dataset,
         pretrained_model_name_or_path=model_path,
         device_map='auto',
         cache_dir = f"./{model_nickname}",
-        token="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"
+        token="YOURHFTOKEN"
     )
     print(LLM_model.config)
 
     LLM_model.resize_token_embeddings(len(tokenizer))
+    
     print("Init dataset")
     train_dataset, eval_dataset = train_dataset.rename_column("label", "labels"), train_eval_dataset.rename_column("label", "labels")
 

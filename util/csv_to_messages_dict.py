@@ -68,18 +68,6 @@ def turn_csv_to_messages_dict(path):
  
                 
                 
-                
-        
-    
-    
-
-
-
-
-
-
-
-
 def main():
     args = sys.argv[1:]
     #args 1 is the dataset

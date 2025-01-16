@@ -52,13 +52,13 @@ def main():
     task = args[0]
 
     print("Initializing dataset")
-    tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2-medium", token="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", padding_side="left")
+    tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1", token="YOURHFTOKEN", padding_side="left")
 
     model = AutoModelForCausalLM.from_pretrained(
-        pretrained_model_name_or_path="openai-community/gpt2-medium",
+        pretrained_model_name_or_path="mistralai/Mixtral-8x7B-v0.1",
         device_map='auto',
-        cache_dir = f"./gpt2medium",
-        token="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"
+        cache_dir = f"./mistral8x7b",
+        token="YOURHFTOKEN"
     )
 
     tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token

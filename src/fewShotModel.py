@@ -117,16 +117,14 @@ class FewSoftModel():
         self.num_epochs = None
     
     def init_LLM_n_tokenizer(self):
-        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, token="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")
+        self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_path, token="YOURHFTOKEN")
         self.tokenizer.pad_token_id = self.tokenizer.eos_token_id if self.tokenizer.pad_token_id is None else self.tokenizer.pad_token
-
-        # login()
 
         self.LLM_model = AutoModelForCausalLM.from_pretrained(
             pretrained_model_name_or_path=self.model_path,
             device_map='auto',
             cache_dir = "./llama13b",
-            token="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"
+            token="YOURHFTOKEN"
         )
 
         self.num_virtual_tokens = len(self.tokenizer(f"{INNIT_DICT_FEW_SHOT[self.task]}")["input_ids"])
@@ -136,9 +134,7 @@ class FewSoftModel():
         peft_config = PromptTuningConfig(
             task_type=TaskType.CAUSAL_LM,
             prompt_tuning_init=PromptTuningInit.RANDOM,
-            # prompt_tuning_init_text=f"{INNIT_DICT_FEW_SHOT[self.task]}",
             num_virtual_tokens= 8,
-            # self.num_virtual_tokens,
             tokenizer_name_or_path=self.tokenizer_path,
         )
 
@@ -150,7 +146,6 @@ class FewSoftModel():
         eval_ds = self.tokenized_dataset["valid"]
 
         batch_size = 4
-        # train_sampler = DistributedSampler(train_ds)
         self.train_dataloader = DataLoader(train_ds, shuffle=True, collate_fn=self.collate_fn, batch_size=batch_size, pin_memory=True)
         self.eval_dataloader = DataLoader(eval_ds, collate_fn=self.collate_fn, batch_size=batch_size, pin_memory=True) 
 
@@ -198,14 +193,12 @@ class FewSoftModel():
     def train_custom_loop(self):
         device = "cuda"
         torch.cuda.empty_cache()
-        # model = torch.nn.parallel.DistributedDataParallel(model, device_ids=[local_rank], output_device=local_rank)
         for epoch in range(self.num_epochs):
             print(f"Epoch: {epoch}")
             self.PEFT_model.train()
             total_loss = 0
             for step, batch in enumerate(tqdm(self.train_dataloader)):
                 batch = {k: v.to(device) for k, v in batch.items()}
-                # print(f"prefix_labels shape: {prefix_labels.shape}")
                 batch["labels"] = batch["labels"].unsqueeze(-1)
                 outputs = self.PEFT_model(**batch)
                 print(outputs)

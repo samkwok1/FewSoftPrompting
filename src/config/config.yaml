@@ -14,9 +14,9 @@ env:
 
   model_description: # what model you're training/testing
     type: "base" # either base, fine_tuned, soft_prompted, or fine_tuned_soft_prompted
-    model_path: 'openai-community/gpt2-medium' # path to the model
-    tokenizer_path: 'openai-community/gpt2-medium' # path to the tokenizer
-    model_nickname: "gpt2medium"
+    model_path: 'mistralai/Mixtral-8x7B-v0.1' # path to the model
+    tokenizer_path: 'mistralai/Mixtral-8x7B-v0.1' # path to the tokenizer
+    model_nickname: "mistral8x7b"
 
   dataset: "wino" # what dataset to train/eval/test on; wino, siqa, or arc
   num_shots: 3 # the number of shots to use during training
