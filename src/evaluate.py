@@ -109,89 +109,44 @@ def eval_pipeline(dataset, model_path, tokenizer_path, task='text-generation'):
         outputs.append(out[0])
     return outputs
 
-def evaluate(model_path, model_nickname, tokenizer_path, num_shots, dataset, dataset_name, num_eval_shots, save_path, type):
-    if type != "base":
-        device = "cuda"
-        print("Init PEFT model")
-        account="YOURACCOUNTNAME"        
-        peft_model_id=f"{account}/{model_nickname}-{dataset_name}-{num_shots}shot"
-        config = PeftConfig.from_pretrained(peft_model_id)
+def get_tokenizer(path, side='right'):
+    tokenizer = AutoTokenizer.from_pretrained(path, token="YOURHFTOKEN", padding_side=side)
+    tokenizer.pad_token = tokenizer.pad_token or tokenizer.eos_token
+    tokenizer.pad_token_id = tokenizer.pad_token_id or tokenizer.eos_token_id
+    return tokenizer
+
+def get_model(model_path, tokenizer_path, is_peft, model_nickname, dataset_name, num_shots):
+    if is_peft:
+        config = PeftConfig.from_pretrained(f"YOURACCOUNTNAME/{model_nickname}-{dataset_name}-{num_shots}shot")
         model = AutoModelForCausalLM.from_pretrained(config.base_model_name_or_path)
-        model = PeftModel.from_pretrained(model, peft_model_id)
-
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="YOURHFTOKEN", padding_side='right')
-        tokenizer.padding_side = 'right'
-        tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
-
-        model.to(device)
-        model.eval()
-        batch_size = 100
-
-        total_batches = len(dataset["input_ids"]) // batch_size + (0 if len(dataset["input_ids"]) % batch_size == 0 else 1)
-        y_hat = []
-        with torch.no_grad():
-            for batch_idx in tqdm(range(total_batches)):
-                start_idx = batch_idx * batch_size
-                end_idx = start_idx + batch_size
-
-                batch_ids = dataset["input_ids"][start_idx:end_idx]
-                batch_masks = dataset["attention_mask"][start_idx:end_idx]
-                
-                input_ids = torch.tensor(batch_ids, dtype=torch.int64).to(device)
-                attention_mask = torch.tensor(batch_masks, dtype=torch.int64).to(device)
-                outputs = model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=20,
-                    repetition_penalty=0.5,
-                    temperature=0.5
-                )
-                y_hat.extend(tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True))
-                del input_ids
-                del attention_mask
-                torch.cuda.empty_cache()
-
+        model = PeftModel.from_pretrained(model, f"YOURACCOUNTNAME/{model_nickname}-{dataset_name}-{num_shots}shot")
     else:
-        device = "cuda"
-        print("Init base model")
         model = AutoModelForCausalLM.from_pretrained(model_path, token="YOURHFTOKEN")
+    return model
 
-        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, token="YOURHFTOKEN", padding_side='right')
-        tokenizer.padding_side = 'right'
-        tokenizer.pad_token = tokenizer.eos_token if tokenizer.pad_token is None else tokenizer.pad_token
-        tokenizer.pad_token_id = tokenizer.eos_token_id if tokenizer.pad_token_id is None else tokenizer.pad_token_id
+def batch_generate(model, tokenizer, dataset, device):
+    model.to(device)
+    model.eval()
+    batch_size = 100
+    total_batches = (len(dataset["input_ids"]) + batch_size - 1) // batch_size
+    y_hat = []
+    with torch.no_grad():
+        for i in tqdm(range(total_batches)):
+            s, e = i * batch_size, (i + 1) * batch_size
+            input_ids = torch.tensor(dataset["input_ids"][s:e], dtype=torch.int64).to(device)
+            attn_mask = torch.tensor(dataset["attention_mask"][s:e], dtype=torch.int64).to(device)
+            outputs = model.generate(input_ids=input_ids, attention_mask=attn_mask, max_new_tokens=20, repetition_penalty=0.5, temperature=0.5)
+            y_hat.extend(tokenizer.batch_decode(outputs.cpu().numpy(), skip_special_tokens=True))
+            del input_ids, attn_mask
+            torch.cuda.empty_cache()
+    return y_hat
 
-        model.to(device)
-        model.eval()
-        batch_size = 100
-
-        total_batches = len(dataset["input_ids"]) // batch_size + (0 if len(dataset["input_ids"]) % batch_size == 0 else 1)
-        y_hat = []
-        with torch.no_grad():
-            for batch_idx in tqdm(range(total_batches)):
-                start_idx = batch_idx * batch_size
-                end_idx = start_idx + batch_size
-
-                batch_ids = dataset["input_ids"][start_idx:end_idx]
-                batch_masks = dataset["attention_mask"][start_idx:end_idx]
-                
-                input_ids = torch.tensor(batch_ids, dtype=torch.int64).to(device)
-                attention_mask = torch.tensor(batch_masks, dtype=torch.int64).to(device)
-                outputs = model.generate(
-                    input_ids=input_ids,
-                    attention_mask=attention_mask,
-                    max_new_tokens=20,
-                    repetition_penalty=0.5,
-                    temperature=0.5
-                )
-                y_hat.extend(tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True))
-                del input_ids
-                del attention_mask
-                torch.cuda.empty_cache()
-    
+def evaluate(model_path, model_nickname, tokenizer_path, num_shots, dataset, dataset_name, num_eval_shots, save_path, type):
+    is_peft = (type != "base")
+    model = get_model(model_path, tokenizer_path, is_peft, model_nickname, dataset_name, num_shots)
+    tokenizer = get_tokenizer(tokenizer_path, side='right')
+    y_hat = batch_generate(model, tokenizer, dataset, "cuda")
     y = get_labels(dataset_name, num_eval_shots).tolist()
-    old_length = len(y_hat)
     y_hat_new = process_predictions(dataset_name=dataset_name, num_shots=num_eval_shots, y_hat=y_hat, find_idx=1)
-    eval_predictions(y_hat, y_hat_new, y, dataset_name, old_length, num_shots=num_eval_shots)
+    eval_predictions(y_hat, y_hat_new, y, dataset_name, len(y_hat), num_shots=num_eval_shots)
     save_to_csv(y_hat, y_hat_new, y, dataset_name, num_shots, num_eval_shots, type)
